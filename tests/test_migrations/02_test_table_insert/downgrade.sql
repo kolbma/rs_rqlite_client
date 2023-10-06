@@ -1,0 +1,1 @@
+-- DELETE FROM test WHERE id = 1 AND val = "testval";

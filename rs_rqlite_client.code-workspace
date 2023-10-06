@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"rust-analyzer.cargo.features": [
+			"log",
+			"migration_embed",
+			"ureq_tls",
+			"url"
+		],
+		"rust-analyzer.cargo.noDefaultFeatures": true
+	}
+}

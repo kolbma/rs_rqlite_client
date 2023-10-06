@@ -1,0 +1,274 @@
+/*!
+
+This is an __rqlite__ database client library with optional extra _convenience_.
+
+__rqlite__ is an easy-to-use, lightweight, distributed relational database, which uses SQLite as its storage engine.
+It is super-simple to deploy, operating it is very straightforward, and its clustering capabilities provide you
+with fault-tolerance and high-availability.
+
+See the documentation of __rqlite__ database for a [Quick start](https://rqlite.io/docs/quick-start/)!
+
+__`rqlite_client`__ provides a type safe __Rust library API__ to use some __rqlite__ database backend from your code.
+There is the possibility to create type safe queries and retrieve type safe results.
+It has an optional implementation for database scheme migration and rollback.
+Per default the HTTP(S) requests are handled by a provided [`RequestBuilder`] implementation based on crate [`ureq`](https://crates.io/crates/ureq).
+But you can provide any implementation yourself for supporting your preferred HTTP client.
+The crate supports [`log`](https://crates.io/crates/log) or [`tracing`](https://crates.io/crates/tracing).
+
+See [Usage](#usage) and [Examples](#examples) for further information!
+
+
+# Features
+
+* __default = ["ureq", "url"]__
+
+* `log`
+
+    Uses [`log`](https://crates.io/crates/log) for some logging. Logger need to be configured via `log` crate in your application code.
+
+* `migration`
+
+    Enables support for schema migration of __rqlite__ database. See [`Migration`](migration::Migration).
+
+* `migration_embed`
+
+    Enables schema migration support with embedding SQL from files in the application code. See [`Migration`](migration::Migration).
+
+* `percent_encoding`
+
+    If you disable feature `url`, you have to add feature `percent_encoding` to get working _GET_ _SELECT_ queries.
+
+* `tracing`
+
+    Uses [`tracing`](https://crates.io/crates/tracing) for some logging. Tracing need to be configured via `tracing` crate in your application code.
+
+* `ureq`
+
+    The default HTTP client used for communication with the __rqlite__ database. If you disable the feature, you have to provide an
+    own [`RequestBuilder`] implementation to handle your replacement of [`Request`].
+
+* `ureq_charset`
+
+    Enables Non-UTF8 charset handling in `ureq` requests.
+
+* `ureq_socks_proxy`
+
+    Enables support of __Socks Proxy__ Urls in `ureq`.
+
+* `ureq_tls`
+
+    Enables __TLS__ support for `ureq`-requests with loading certs from system store.
+
+* `ureq_webpki`
+
+    Enables __TLS__ support for `ureq`-requests with only embedded Mozilla cert store.
+
+* `url`
+
+    Uses per default [`url::Url`] instead of string manipulation and `percent_encoding`.
+
+
+# Support, Issues, Contributing
+
+__`rqlite_client`__ is an __Open Source__ project and everybody should be encouraged to contribute with the individual possibilities
+to improve the project and its results.
+
+If you need __help__ with your development based on this library, you may ask questions and for assistance in the
+__[Github discussions](https://github.com/kolbma/rs_rqlite_client/discussions)__.
+
+For any assistance with __rqlite__ database, you are requested to get in contact with the __rqlite__ project at __<https://rqlite.io/community/>__.
+
+You are free to create meaningful and reproducable __issue reports__ in __[Github issues](https://github.com/kolbma/rs_rqlite_client/issues)__.
+Please be kind, tolerant and forbear with developers providing you a beneficial product,
+although it isn't everybodys flavour and can't be perfect :wink:
+
+## Code contribution
+
+You can provide _Pull-Requests_ to the __[Github main branch](https://github.com/kolbma/rs_rqlite_client)__.
+
+It is preferred that there are no warnings with __`warn(clippy::pedantic)`__ and the build needs to be successful with __`forbid(unsafe_code)`__.
+
+The __stable-toolchain__ is used for development, but the _crate_ should compile back to specified __MSRV__ in _Cargo.toml_.
+
+
+# Running tests
+
+For running tests you'll need a working __rqlited__ installation in subdirectory _rqlite_.
+There is an `rqlite/install.sh` script which could do the installation for your environment, if the environment
+is already supported in the script.
+
+The test routines are looking up __rqlited__ in a directory structure like _rqlite/&lt;arch&gt;/rqlite/rqlited_.
+
+For testing make use of __`cargo`__.
+
+```bash
+$ cargo test --all-features
+```
+
+There is also a shell script `./test-features.sh` to test all __meaningful__ feature __combinations__.
+
+```bash
+$ ./test-features.sh
+```
+
+Before crate release the tests need to be successful in __all combinations__ with the cargo __addon__ __test-all-features__:
+```bash
+$ cargo test-all-features
+```
+
+
+# Usage
+
+## Url encoding
+
+By default the enabled __feature__ `url` handles url encoding. If you don't want to use `url` dependency, there is the possibility
+to enable __feature__ `percent_encoding` for handling url encoding.
+__*One or the other needs to be enabled or the generated urls won't be correct!*__
+
+## Database scheme migration and rollback support
+
+If you want to use database scheme migration and rollback, you have to enable `migration` or `migration_embed` __feature__.
+See [`Migration`](migration::Migration) for further documentation.
+
+## Logging
+
+`rqlite_client` does some logging if there is enabled the __feature__ `log` or `tracing` and the crates has been initialised
+for logging.
+
+
+# Examples
+
+## Query database
+
+A simple query of your local database might look like...
+
+```no_run
+# #[cfg(feature = "ureq")] {
+
+use std::time::Duration;
+
+use rqlite_client::{request_type::Get, Connection, Query, Request, RequestBuilder, Result};
+
+let url = "http://localhost:4001";
+
+##[cfg(feature = "url")]
+let con = Connection::new(url).expect("url failed");
+##[cfg(not(feature = "url"))]
+let con = Connection::new(url);
+
+let query = con
+    .query()
+    .set_sql_str_slice(&["SELECT COUNT(*) FROM tbl WHERE col = ?", "test"]);
+
+let result = query.request_run();
+
+if let Ok(response) = result {
+    if let Some(Result::Standard(success)) = response.results().next() {
+        let row = 0;
+        let col = 0;
+        let rows_found = &success.values[row][col];
+        println!("tbl has {rows_found} row(s)");
+    }
+}
+# }
+# #[cfg(not(feature = "ureq"))]
+# fn main() {}
+```
+
+See [`Query`] for further documentation.
+
+
+## Insert data
+
+To insert data you have to use [`Connection::execute()`](./struct.Connection.html#method.execute)
+and [`request_type::Post`](./request_type/struct.Post.html).
+
+```no_run
+# #[cfg(feature = "ureq")] {
+
+use std::time::Duration;
+
+use rqlite_client::{request_type::Post, Connection, Query, Request, RequestBuilder, Result};
+
+let url = "http://localhost:4001";
+
+##[cfg(feature = "url")]
+let con = Connection::new(url).expect("url failed");
+##[cfg(not(feature = "url"))]
+let con = Connection::new(url);
+
+let query = con
+    .execute()
+    .push_sql_str_slice(&["INSERT INTO tbl (col) VALUES (?)", "test"]);
+
+let result = query.request_run();
+
+if let Ok(response) = result {
+    if let Some(Result::Execute(success)) = response.results().next() {
+        println!("last inserted primary key {}", success.last_insert_id);
+    }
+}
+# }
+# #[cfg(not(feature = "ureq"))]
+# fn main() {}
+```
+
+See [`Query`] for further documentation.
+
+*/
+#![warn(clippy::pedantic)]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    non_ascii_idents,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unsafe_code,
+    unused_crate_dependencies,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results
+)]
+#![forbid(unsafe_code)]
+
+#[cfg(not(feature = "ureq"))]
+use lazy_static as _;
+#[cfg(feature = "percent_encoding")]
+use percent_encoding as _;
+#[cfg(test)]
+#[cfg(not(feature = "ureq"))]
+use time as _;
+
+pub use buildtime::BUILD_TIME;
+pub use connection::Connection;
+pub use data_type::DataType;
+pub use error::Error;
+pub use query::{consistency_level, endpoint, freshness, state, Query};
+#[cfg(feature = "ureq")]
+pub use request::{request_type, Request, RequestType};
+pub use request_builder::RequestBuilder;
+pub use response::result::{self, Result};
+pub use response::{Response, ResponseResult};
+pub use serde_json::Value;
+#[cfg(feature = "ureq")]
+pub use ureq;
+
+mod buildtime;
+mod connection;
+mod data_type;
+mod error;
+pub(crate) mod log;
+#[cfg(feature = "migration")]
+pub mod migration;
+mod query;
+mod request;
+mod request_builder;
+mod response;
+#[cfg(test)]
+mod test_rqlited;
+pub(crate) mod tracing;
+
+#[cfg(test)]
+mod tests {}
