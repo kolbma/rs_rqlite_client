@@ -25,45 +25,45 @@ jobs:
           toolchain: 1.62.0
           default: true
     - uses: actions-rs/clippy-check@v1
-        with:
-          toolchain: stable
-          args: --all-features
+      with:
+        toolchain: stable
+        args: --all-features
     - run: ./rqlite/install.sh
     - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          toolchain: stable
-          args: cargo-all-features
+      with:
+        command: install
+        toolchain: stable
+        args: cargo-all-features
     - uses: actions-rs/cargo@v1
-        with:
-          command: check-all-features
-          toolchain: stable
+      with:
+        command: check-all-features
+        toolchain: stable
     - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          toolchain: stable
-          args: --verbose --all-features --no-deps
+      with:
+        command: doc
+        toolchain: stable
+        args: --verbose --all-features --no-deps
     - uses: actions-rs/cargo@v1
-        with:
-          command: test-all-features
-          toolchain: stable
+      with:
+        command: test-all-features
+        toolchain: stable
     - uses: actions-rs/cargo@v1
-        with:
-          command: test-all-features
+      with:
+        command: test-all-features
     - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --verbose --all-features --no-deps
+      with:
+        command: doc
+        args: --verbose --all-features --no-deps
     - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          toolchain: stable
-          args: --verbose --release
+      with:
+        command: build
+        toolchain: stable
+        args: --verbose --release
     - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --verbose
+      with:
+        command: build
+        args: --verbose
     - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --verbose --release
+      with:
+        command: build
+        args: --verbose --release
