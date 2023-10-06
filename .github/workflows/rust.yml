@@ -28,7 +28,7 @@ jobs:
       with:
         toolchain: stable
         token: ${{ secrets.GITHUB_TOKEN }}
-        args: --all-features
+        args: -v --all-features
     - run: ./rqlite/install.sh
     - uses: actions-rs/cargo@v1
       with:
