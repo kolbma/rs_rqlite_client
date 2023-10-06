@@ -18,17 +18,18 @@ jobs:
     - uses: actions/checkout@v4
     - uses: actions-rs/toolchain@v1
       with:
-          toolchain: stable
-          components: clippy, rustfmt
-    - uses: actions-rs/toolchain@v1
-      with:
-          toolchain: 1.62.0
-          default: true
+        toolchain: stable
+        components: clippy, rustfmt
+        default: true
     - uses: actions-rs/clippy-check@v1
       with:
         toolchain: stable
         token: ${{ secrets.GITHUB_TOKEN }}
         args: -v --all-features
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.62.0
+        default: true
     - run: ./rqlite/install.sh
     - uses: actions-rs/cargo@v1
       with:
