@@ -27,6 +27,7 @@ jobs:
     - uses: actions-rs/clippy-check@v1
       with:
         toolchain: stable
+        token: ${{ secrets.RS_RQLITE_CLIENT_CLIPPY_CHECK }}
         args: --all-features
     - run: ./rqlite/install.sh
     - uses: actions-rs/cargo@v1
