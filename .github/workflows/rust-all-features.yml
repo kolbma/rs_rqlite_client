@@ -1,0 +1,59 @@
+name: Rust
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_MSRV_TOOLCHAIN: 1.67.0
+
+jobs:
+  test-stable-all-features:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: jlumbroso/free-disk-space@main
+      with:
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
+        tool-cache: false
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        default: true
+    - uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-all-features
+    - uses: actions/checkout@v4
+    - run: ./rqlite/install.sh
+    - uses: actions-rs/cargo@v1
+      with:
+        command: test-all-features
+
+  test-msrv-all-features:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: jlumbroso/free-disk-space@main
+      with:
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
+        tool-cache: false
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
+        default: true
+    - uses: actions/checkout@v4
+    - run: ./rqlite/install.sh
+    - run: ./test-features.sh

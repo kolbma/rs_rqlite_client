@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_MSRV_TOOLCHAIN: 1.62.0
+  RUST_MSRV_TOOLCHAIN: 1.67.0
 
 jobs:
   source-check:
@@ -64,7 +64,7 @@ jobs:
         command: doc
         args: --verbose --all-features --no-deps
 
-  test-stable-all-features:
+  test-stable-features:
     runs-on: ubuntu-latest
     needs: source-check
 
@@ -88,13 +88,11 @@ jobs:
         args: cargo-all-features
     - uses: actions/checkout@v4
     - run: ./rqlite/install.sh
-    - uses: actions-rs/cargo@v1
-      with:
-        command: test-all-features
+    - run: ./test-features.sh
 
-  test-msrv-all-features:
+  test-msrv-features:
     runs-on: ubuntu-latest
-    needs: source-check
+    needs: test-stable-features
 
     steps:
     - uses: jlumbroso/free-disk-space@main
