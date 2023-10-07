@@ -44,7 +44,7 @@ fn migration_test() {
         let m = Migration::from_embed::<MigrationEmbed>();
         let version = m
             .migrate(&TEST_CONNECTION)
-            .unwrap_or_else(|_err| unreachable!());
+            .unwrap_or_else(|err| unreachable!("err: {:?}", err));
         assert_eq!(u64::from(&version), 3_u64);
     });
 }
