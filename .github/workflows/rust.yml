@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: checkout
     env:
-      CARGO_TARGET_DIR=./target-stable
+      CARGO_TARGET_DIR: ./target-stable
 
     steps:
     - uses: actions-rs/toolchain@v1
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: checkout
     env:
-      CARGO_TARGET_DIR=./target-msrv
+      CARGO_TARGET_DIR: ./target-msrv
 
     steps:
     - uses: actions-rs/toolchain@v1
@@ -58,16 +58,16 @@ jobs:
 
   rqlite:
     runs-on: ubuntu-latest
-    needs: free-disk-space
+    needs: checkout
 
     steps:
     - run: ./rqlite/install.sh
 
   cargo-all-features:
     runs-on: ubuntu-latest
-    needs: free-disk-space
+    needs: rust-stable
     env:
-      CARGO_TARGET_DIR=./target-stable
+      CARGO_TARGET_DIR: ./target-stable
 
     steps:
     - uses: actions-rs/cargo@v1
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [rust-stable, cargo-all-features]
     env:
-      CARGO_TARGET_DIR=./target-stable
+      CARGO_TARGET_DIR: ./target-stable
 
     permissions:
       checks: write
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [rust-stable]
     env:
-      CARGO_TARGET_DIR=./target-stable
+      CARGO_TARGET_DIR: ./target-stable
 
     permissions:
       checks: write
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [source-check, rqlite]
     env:
-      CARGO_TARGET_DIR=./target-stable
+      CARGO_TARGET_DIR: ./target-stable
 
     steps:
     - uses: actions-rs/cargo@v1
@@ -150,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [rust-msrv, rqlite]
     env:
-      CARGO_TARGET_DIR=./target-msrv
+      CARGO_TARGET_DIR: ./target-msrv
 
     steps:
     - uses: actions-rs/cargo@v1
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-stable
     env:
-      CARGO_TARGET_DIR=./target-stable
+      CARGO_TARGET_DIR: ./target-stable
 
     steps:
     - uses: actions-rs/cargo@v1
@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-msrv
     env:
-      CARGO_TARGET_DIR=./target-msrv
+      CARGO_TARGET_DIR: ./target-msrv
 
     steps:
     - uses: actions-rs/cargo@v1
