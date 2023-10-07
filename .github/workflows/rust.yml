@@ -31,7 +31,7 @@ jobs:
         args: --all-features
     - uses: actions-rs/cargo@v1
       with:
-        command: rustfmt
+        command: fmt
         args: --check
 
   cargo-doc-stable:
