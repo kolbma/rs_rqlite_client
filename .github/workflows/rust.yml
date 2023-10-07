@@ -56,7 +56,7 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: $RUST_MSRV_TOOLCHAIN
+        toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         default: true
     - uses: actions/checkout@v4
     - uses: actions-rs/cargo@v1
@@ -108,7 +108,7 @@ jobs:
         tool-cache: false
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: $RUST_MSRV_TOOLCHAIN
+        toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         default: true
     - uses: actions-rs/cargo@v1
       with:
@@ -140,7 +140,7 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: $RUST_MSRV_TOOLCHAIN
+        toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         default: true
     - uses: actions/checkout@v4
     - uses: actions-rs/cargo@v1
