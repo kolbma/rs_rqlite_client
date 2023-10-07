@@ -344,7 +344,11 @@ mod tests {
 
             assert!(r.is_err());
             let err_msg = r.unwrap_err().to_string();
-            assert!(err_msg.contains("Network Error: timed out"), "{}", err_msg);
+            assert!(
+                err_msg.contains("Network Error") && err_msg.contains("timed out"),
+                "{}",
+                err_msg
+            );
         });
     }
 
