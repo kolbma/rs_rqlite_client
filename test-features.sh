@@ -3,7 +3,7 @@
 features="migration migration_embed ureq ureq_tls ureq_webpki"
 features_addon="log percent_encoding tracing ureq_charset ureq_socks_proxy url"
 
-function cargo_test() {
+cargo_test() {
     feature="$1"
     addon="$2"
 
@@ -27,7 +27,7 @@ function cargo_test() {
 script_dir="$(dirname "$0")"
 script_dir="$(cd "$script_dir" && pwd)"
 
-default_features="$(grep "^default =" "$script_dir/Cargo.toml" | cut -d '[' -f 2 | tr -d '"[]')"
+default_features=$(grep "^default =" "$script_dir/Cargo.toml" | cut -d '[' -f 2 | tr -d '"[]')
 
 cargo_test
 
