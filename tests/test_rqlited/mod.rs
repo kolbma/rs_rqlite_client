@@ -93,7 +93,7 @@ impl TestRqlited {
                 self.is_started.store(false, Ordering::SeqCst);
             }
             if !self.is_started.load(Ordering::Relaxed) {
-                std::thread::sleep(Duration::from_secs(3));
+                std::thread::sleep(Duration::from_millis(2000));
                 self.is_started.store(true, Ordering::Relaxed);
             }
         }
