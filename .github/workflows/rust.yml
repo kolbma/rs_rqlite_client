@@ -8,10 +8,65 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_MSRV_TOOLCHAIN: 1.62.0
 
 jobs:
-  free-disk-space:
+  source-check:
     runs-on: ubuntu-latest
+
+    permissions:
+      checks: write
+      contents: read
+
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        components: clippy, rustfmt
+        default: true
+    - uses: actions/checkout@v4
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features
+    - uses: actions-rs/cargo@v1
+      with:
+        command: rustfmt
+        args: --check
+
+  cargo-doc-stable:
+    runs-on: ubuntu-latest
+    needs: source-check
+
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        default: true
+    - uses: actions/checkout@v4
+    - uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: --verbose --all-features --no-deps
+
+  cargo-doc-msrv:
+    runs-on: ubuntu-latest
+    needs: source-check
+
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: $RUST_MSRV_TOOLCHAIN
+        default: true
+    - uses: actions/checkout@v4
+    - uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: --verbose --all-features --no-deps
+
+  test-stable-all-features:
+    runs-on: ubuntu-latest
+    needs: source-check
 
     steps:
     - uses: jlumbroso/free-disk-space@main
@@ -23,162 +78,71 @@ jobs:
         docker-images: true
         swap-storage: false
         tool-cache: false
-
-  checkout:
-    runs-on: ubuntu-latest
-    needs: free-disk-space
-
-    steps:
-    - uses: actions/checkout@v4
-
-  rust-stable:
-    runs-on: ubuntu-latest
-    needs: checkout
-    env:
-      CARGO_TARGET_DIR: ./target-stable
-
-    steps:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-        components: clippy, rustfmt
         default: true
-
-  rust-msrv:
-    runs-on: ubuntu-latest
-    needs: checkout
-    env:
-      CARGO_TARGET_DIR: ./target-msrv
-
-    steps:
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: 1.62.0
-        default: true
-
-  rqlite:
-    runs-on: ubuntu-latest
-    needs: checkout
-
-    steps:
-    - run: ./rqlite/install.sh
-
-  cargo-all-features:
-    runs-on: ubuntu-latest
-    needs: rust-stable
-    env:
-      CARGO_TARGET_DIR: ./target-stable
-
-    steps:
     - uses: actions-rs/cargo@v1
       with:
         command: install
-        toolchain: stable
         args: cargo-all-features
-
-  source-check:
-    runs-on: ubuntu-latest
-    needs: [rust-stable, cargo-all-features]
-    env:
-      CARGO_TARGET_DIR: ./target-stable
-
-    permissions:
-      checks: write
-      contents: read
-
-    steps:
-    - uses: actions-rs/clippy-check@v1
-      with:
-        toolchain: stable
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: -v --all-features
-    - uses: actions-rs/cargo@v1
-      with:
-        command: check-all-features
-        toolchain: stable
-
-  cargo-doc:
-    runs-on: ubuntu-latest
-    needs: [rust-stable]
-    env:
-      CARGO_TARGET_DIR: ./target-stable
-
-    permissions:
-      checks: write
-      contents: read
-
-    steps:
-    - uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        toolchain: stable
-        args: --verbose --all-features --no-deps
-
-  test-stable:
-    runs-on: ubuntu-latest
-    needs: [source-check, rqlite]
-    env:
-      CARGO_TARGET_DIR: ./target-stable
-
-    steps:
+    - uses: actions/checkout@v4
+    - run: ./rqlite/install.sh
     - uses: actions-rs/cargo@v1
       with:
         command: test-all-features
-        toolchain: stable
-    - uses: actions-rs/cargo@v1
-      with:
-        command: test-all-features
-    - uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --verbose --all-features --no-deps
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        toolchain: stable
-        args: --verbose --release
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --release
 
-  test-msrv:
+  test-msrv-all-features:
     runs-on: ubuntu-latest
-    needs: [rust-msrv, rqlite]
-    env:
-      CARGO_TARGET_DIR: ./target-msrv
+    needs: source-check
 
     steps:
+    - uses: jlumbroso/free-disk-space@main
+      with:
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
+        tool-cache: false
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: $RUST_MSRV_TOOLCHAIN
+        default: true
     - uses: actions-rs/cargo@v1
       with:
-        command: doc
-        args: --verbose --all-features --no-deps
+        command: install
+        args: cargo-all-features
+    - uses: actions/checkout@v4
+    - run: ./rqlite/install.sh
     - run: ./test-features.sh
 
   build-stable:
     runs-on: ubuntu-latest
-    needs: test-stable
-    env:
-      CARGO_TARGET_DIR: ./target-stable
+    needs: source-check
 
     steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        default: true
+    - uses: actions/checkout@v4
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        toolchain: stable
         args: --verbose --release
 
   build-msrv:
     runs-on: ubuntu-latest
-    needs: test-msrv
-    env:
-      CARGO_TARGET_DIR: ./target-msrv
+    needs: build-stable
 
     steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: $RUST_MSRV_TOOLCHAIN
+        default: true
+    - uses: actions/checkout@v4
     - uses: actions-rs/cargo@v1
       with:
         command: build
