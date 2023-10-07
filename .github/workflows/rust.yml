@@ -110,10 +110,6 @@ jobs:
       with:
         toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         default: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-all-features
     - uses: actions/checkout@v4
     - run: ./rqlite/install.sh
     - run: ./test-features.sh
