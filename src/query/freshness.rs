@@ -2,6 +2,8 @@
 
 use std::time::Duration;
 
+use super::duration_string::DurationString;
+
 /// You can tell the receiving node not to return results staler than a certain duration, however.  
 /// If a read request sets the query parameter freshness, the node serving the read will check that less time has
 /// passed since it was last in contact with the Leader, than that specified via freshness.  
@@ -15,19 +17,17 @@ use std::time::Duration;
 ///
 /// See <https://rqlite.io/docs/api/read-consistency/#limiting-read-staleness>
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Freshness {
-    value: Duration,
+pub struct Freshness(Duration);
+
+impl DurationString for Freshness {
+    fn duration(&self) -> &Duration {
+        &self.0
+    }
 }
 
 impl From<Duration> for Freshness {
     fn from(value: Duration) -> Self {
-        Self { value }
-    }
-}
-
-impl From<Freshness> for Duration {
-    fn from(value: Freshness) -> Self {
-        value.value
+        Self(value)
     }
 }
 
@@ -39,10 +39,23 @@ impl Default for Freshness {
 
 impl std::fmt::Display for Freshness {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}ns", self.value.as_nanos()))
+        f.write_str(&DurationString::to_string(self))
     }
 }
 
-const FRESHNESS_DEFAULT: Freshness = Freshness {
-    value: Duration::from_secs(1),
-};
+const FRESHNESS_DEFAULT: Freshness = Freshness(Duration::from_secs(1));
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::Freshness;
+
+    #[test]
+    fn display_test() {
+        assert_eq!(
+            &Freshness::from(Duration::from_millis(1_001)).to_string(),
+            "1s1ms"
+        );
+    }
+}

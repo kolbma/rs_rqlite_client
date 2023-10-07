@@ -8,11 +8,14 @@ pub(crate) use consistency_level::ConsistencyLevel;
 pub(crate) use endpoint::Endpoint;
 pub(crate) use freshness::Freshness;
 pub(crate) use state::State;
+pub(crate) use timeout::Timeout;
 
 pub mod consistency_level;
+mod duration_string;
 pub mod endpoint;
 pub mod freshness;
 pub mod state;
+pub mod timeout;
 mod varparam_macro;
 
 /**
@@ -57,14 +60,19 @@ where
     endpoint: Endpoint,
     freshness: Option<Freshness>,
     is_associative: bool,
+    is_noleader: bool,
+    is_nonvoters: bool,
     is_pretty: bool,
+    is_queue: bool,
     is_redirect: bool,
     is_timing: bool,
     is_transaction: bool,
     is_url_modified: bool,
+    is_wait: bool,
     sql: Vec<Value>,
     state: PhantomData<T>,
-    timeout: Option<Duration>,
+    timeout: Option<Timeout>,
+    timeout_request: Option<Duration>,
     #[cfg(feature = "url")]
     url_cache: RefCell<Option<url::Url>>,
     #[cfg(not(feature = "url"))]
@@ -116,6 +124,26 @@ where
         self.is_associative
     }
 
+    /// Check for readiness `noleader` query flag status
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#readiness-checks>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn is_noleader(&self) -> bool {
+        self.is_noleader
+    }
+
+    /// Check for nodes `nonvoter` query flag status
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#nodes-api>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn is_nonvoters(&self) -> bool {
+        self.is_nonvoters
+    }
+
     /// Check for pretty `Query`
     ///
     /// The use of the URL param pretty is optional, and results in pretty-printed JSON responses.  
@@ -125,6 +153,28 @@ where
     #[inline]
     pub fn is_pretty(&self) -> bool {
         self.is_pretty
+    }
+
+    /// Check for queued `Query`
+    ///
+    /// __rqlite__ exposes a special API flag, which will instruct rqlite to queue up write-requests
+    /// and execute them asynchronously.  
+    /// rqlite will merge the requests, once a batch-size of them has been queued on the node or a
+    /// configurable timeout expires, and execute them as though they had been both contained in a
+    /// single request.
+    ///
+    /// Each response includes a monotonically-increasing `sequence_number`, which allows to track
+    /// the persisting of the data with the [`Endpoint::Status`].
+    ///
+    /// With [`Query::is_wait()`] true, the data has been persisted when the
+    /// [`ResponseResult`](super::ResponseResult) is available and successful.
+    ///
+    /// See <https://rqlite.io/docs/api/queued-writes/>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn is_queue(&self) -> bool {
+        self.is_queue
     }
 
     /// Check for automatic redirect forwarding [[default: true]]
@@ -174,6 +224,22 @@ where
         self.is_transaction
     }
 
+    /// Check for awaited queued `Query`
+    ///
+    /// When [`Query::is_queue()`] true, rqlite will merge the requests, once a batch-size of them has been queued
+    /// on the node or a configurable timeout expires, and execute them as though they had been both contained in
+    /// a single request.
+    ///
+    /// The `wait` can explicitly tell the request to wait until the queue has persisted all pending requests.
+    ///
+    /// See <https://rqlite.io/docs/api/queued-writes/#waiting-for-a-queue-to-flush>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn is_wait(&self) -> bool {
+        self.is_wait
+    }
+
     /// Run `Request` for `Query`
     ///
     /// # Errors
@@ -184,11 +250,11 @@ where
     pub fn request_run(&self) -> crate::response::ResponseResult {
         use crate::request_builder::RequestBuilder;
         match self.endpoint {
-            Endpoint::Execute => {
-                crate::request::Request::<crate::request::request_type::Post>::new().run(self)
-            }
-            Endpoint::Query | Endpoint::Request => {
+            Endpoint::Query | Endpoint::Nodes | Endpoint::Readyz | Endpoint::Status => {
                 crate::request::Request::<crate::request::request_type::Get>::new().run(self)
+            }
+            Endpoint::Execute | Endpoint::Request => {
+                crate::request::Request::<crate::request::request_type::Post>::new().run(self)
             }
         }
     }
@@ -242,11 +308,24 @@ where
         }
     }
 
-    /// Set `timeout` for `Query` HTTP request
+    /// Set `timeout` for `Query` response
+    ///
+    /// See <https://rqlite.io/docs/api/api/#request-forwarding-timeouts>
+    /// and
+    /// see <https://rqlite.io/docs/api/queued-writes/#waiting-for-a-queue-to-flush>
+    ///
     #[must_use]
     #[inline]
-    pub fn set_timeout(mut self, timeout: Duration) -> Self {
+    pub fn set_timeout(mut self, timeout: Timeout) -> Self {
         self.timeout = Some(timeout);
+        self
+    }
+
+    /// Set `timeout_request` for HTTP request of `Query`
+    #[must_use]
+    #[inline]
+    pub fn set_timeout_request(mut self, timeout_request: Duration) -> Self {
+        self.timeout_request = Some(timeout_request);
         self
     }
 
@@ -273,10 +352,16 @@ where
         &self.sql
     }
 
-    /// Get optional `timeout` for `Query`
+    /// Get optional `timeout` for `Query` response
     #[inline]
-    pub fn timeout(&self) -> Option<&Duration> {
+    pub fn timeout(&self) -> Option<&Timeout> {
         self.timeout.as_ref()
+    }
+
+    /// Get optional `timeout` for HTTP request of `Query`
+    #[inline]
+    pub fn timeout_request(&self) -> Option<&Duration> {
+        self.timeout_request.as_ref()
     }
 
     #[inline]
@@ -291,6 +376,10 @@ where
             query_args.push("pretty".to_string());
         }
 
+        if self.is_queue {
+            query_args.push("queue".to_string());
+        }
+
         if !self.is_redirect {
             query_args.push("redirect".to_string());
         }
@@ -301,6 +390,14 @@ where
 
         if self.is_transaction {
             query_args.push("transaction".to_string());
+        }
+
+        if self.is_wait {
+            query_args.push("wait".to_string());
+        }
+
+        if let Some(timeout) = self.timeout {
+            query_args.push(format!("timeout={timeout}"));
         }
 
         if let Some(consistency_level) = self.consistency_level {
@@ -572,14 +669,19 @@ where
         endpoint: src.endpoint,
         freshness,
         is_associative: src.is_associative,
+        is_noleader: src.is_noleader,
+        is_nonvoters: src.is_nonvoters,
         is_pretty: src.is_pretty,
+        is_queue: src.is_queue,
         is_redirect: src.is_redirect,
         is_timing: src.is_timing,
         is_transaction: src.is_transaction,
         is_url_modified: src.is_url_modified,
+        is_wait: src.is_wait,
         sql: src.sql,
         state: PhantomData,
         timeout: src.timeout,
+        timeout_request: src.timeout_request,
         url_cache: src.url_cache,
     }
 }
@@ -849,14 +951,19 @@ impl<'a> Query<'a, state::NoLevel> {
             endpoint: Endpoint::default(),
             freshness: None,
             is_associative: false,
+            is_noleader: false,
+            is_nonvoters: false,
             is_pretty: false,
+            is_queue: false,
             is_redirect: true,
             is_timing: false,
             is_transaction: false,
             is_url_modified: false,
+            is_wait: false,
             sql: Vec::new(),
             state: PhantomData,
             timeout: None,
+            timeout_request: None,
             url_cache: RefCell::new(None),
         }
     }
@@ -903,10 +1010,34 @@ impl<'a> Query<'a, state::NoLevelMulti> {
         transition(self, ConsistencyLevel::None, None)
     }
 
+    /// Set __queued__ write
+    #[must_use]
+    #[inline]
+    pub(crate) fn set_queue(mut self) -> Self {
+        self.is_queue = true;
+        self
+    }
+
     /// Set [`ConsistencyLevel::Strong`] for `Query`
     #[must_use]
     pub fn set_strong(self) -> Query<'a, state::LevelStrongMulti> {
         transition(self, ConsistencyLevel::Strong, None)
+    }
+
+    /// Set `wait` for __queued__ write
+    ///
+    /// See [`Connection::execute_queue()`](./struct.Connection.html#method.execute_queue)
+    ///
+    #[must_use]
+    #[inline]
+    pub fn set_wait(mut self) -> Self {
+        if self.is_queue {
+            self.is_wait = true;
+        } else {
+            log::debug!("no queue write");
+            tracing::debug!("no queue write");
+        }
+        self
     }
 
     /// Set [`ConsistencyLevel::Weak`] for `Query`
@@ -1055,6 +1186,26 @@ mod tests {
     }
 
     #[test]
+    fn queued_write_test() {
+        let mut q = Query::new(&TEST_CONNECTION)
+            .set_endpoint(Endpoint::Execute)
+            .push_sql_str("CREATE TEMP TABLE test (val TEXT)")
+            .push_sql_str("INSERT INTO temp.test (val) VALUES ('sample')")
+            .set_queue();
+        assert_eq!(q.sql().len(), 2);
+        assert_eq!(&q.create_path_with_query(), "/db/execute?queue");
+
+        q = q.set_wait();
+        assert_eq!(&q.create_path_with_query(), "/db/execute?queue&wait");
+
+        q = q.set_timeout(Duration::from_secs(3).into());
+        assert_eq!(
+            &q.create_path_with_query(),
+            "/db/execute?queue&wait&timeout=3s"
+        );
+    }
+
+    #[test]
     fn none_test() {
         let q = Query::new(&TEST_CONNECTION).set_none();
         let path = q.create_path_with_query();
@@ -1067,10 +1218,7 @@ mod tests {
             .set_none()
             .set_freshness(Duration::from_secs(1));
         let path = q.create_path_with_query();
-        assert_eq!(
-            path,
-            format!("/db/query?level=none&freshness={}ns", 1_000_000_000u64)
-        );
+        assert_eq!(path, "/db/query?level=none&freshness=1s");
     }
 
     #[test]
@@ -1095,7 +1243,7 @@ mod tests {
         let path = q.create_path_with_query();
         assert_eq!(
             &path,
-            "/db/query?associative&pretty&timing&level=none&freshness=5000000ns"
+            "/db/query?associative&pretty&timing&level=none&freshness=5ms"
         );
     }
 

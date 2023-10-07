@@ -19,6 +19,9 @@ pub type ResponseResult = std::result::Result<Response, Error>;
 pub struct Response {
     /// query results
     results: Vec<Result>,
+    /// `sequence_number` of queued writes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sequence_number: Option<u64>,
     /// if requested timing information
     #[serde(skip_serializing_if = "Option::is_none")]
     time: Option<f64>,
@@ -36,8 +39,16 @@ impl Response {
         self.results.iter()
     }
 
+    /// For queued writes there will be a `sequence_number`
+    #[must_use]
+    #[inline]
+    pub fn sequence_number(&self) -> Option<u64> {
+        self.sequence_number
+    }
+
     /// Get the duration of the request if available in `f64` seconds
     #[must_use]
+    #[inline]
     pub fn time(&self) -> Option<f64> {
         self.time
     }
@@ -76,6 +87,7 @@ mod tests {
                 time: None,
                 types: HashMap::new(),
             })],
+            sequence_number: None,
             time: None,
         };
 
@@ -106,6 +118,7 @@ mod tests {
                 columns: Vec::new(),
                 values: Vec::new(),
             })],
+            sequence_number: None,
             time: None,
         };
 
@@ -136,6 +149,7 @@ mod tests {
                 columns: vec!["id".to_string(), "value".to_string()],
                 values: vec![vec![1.into(), "test".into()]],
             })],
+            sequence_number: None,
             time: None,
         };
 

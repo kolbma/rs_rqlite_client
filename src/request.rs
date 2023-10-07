@@ -120,7 +120,7 @@ impl Request<Get> {
             .get(&query.to_string())
             .set("Content-Type", "application/json");
 
-        let r = if let Some(timeout) = query.timeout() {
+        let r = if let Some(timeout) = query.timeout_request() {
             r.timeout(*timeout)
         } else {
             r
@@ -147,7 +147,7 @@ impl Request<Post> {
             .post(&query.to_string())
             .set("Content-Type", "application/json");
 
-        let r = if let Some(timeout) = query.timeout() {
+        let r = if let Some(timeout) = query.timeout_request() {
             r.timeout(*timeout)
         } else {
             r
@@ -319,7 +319,7 @@ mod tests {
         TEST_RQLITED_DB.run_test(|| {
             let r = Request::<Get>::from(&*TEST_PROXY_CONNECTION).run(
                 &Query::new(&TEST_PROXY_CONNECTION)
-                    .set_timeout(Duration::from_millis(10))
+                    .set_timeout_request(Duration::from_millis(10))
                     .set_sql_str("SELECT 1"),
             );
 
@@ -338,7 +338,7 @@ mod tests {
         TEST_RQLITED_DB.run_test(|| {
             let r = Request::<Get>::new().run(
                 &Query::new(&TEST_CONNECTION)
-                    .set_timeout(Duration::from_nanos(10))
+                    .set_timeout_request(Duration::from_nanos(10))
                     .set_sql_str("SELECT 1"),
             );
 
@@ -357,7 +357,7 @@ mod tests {
         TEST_RQLITED_DB.run_test(|| {
             let r = Request::<Get>::from(&*TEST_SOCKS_PROXY_CONNECTION).run(
                 &Query::new(&TEST_SOCKS_PROXY_CONNECTION)
-                    .set_timeout(Duration::from_millis(10))
+                    .set_timeout_request(Duration::from_millis(10))
                     .set_sql_str("SELECT 1"),
             );
 

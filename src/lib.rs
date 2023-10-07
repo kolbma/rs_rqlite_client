@@ -262,7 +262,7 @@ pub use buildtime::BUILD_TIME;
 pub use connection::Connection;
 pub use data_type::DataType;
 pub use error::Error;
-pub use query::{consistency_level, endpoint, freshness, state, Query};
+pub use query::{consistency_level, endpoint, freshness, state, timeout, Query};
 #[cfg(feature = "ureq")]
 pub use request::{request_type, Request, RequestType};
 pub use request_builder::RequestBuilder;

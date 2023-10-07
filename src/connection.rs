@@ -46,7 +46,7 @@ mod scheme;
 ///     .push_sql_str("CREATE TEMP TABLE tmp")
 ///     .push_sql_str("CREATE TEMP TABLE tmp2")
 ///     .set_timing()
-///     .set_timeout(std::time::Duration::from_secs(2));
+///     .set_timeout_request(std::time::Duration::from_secs(2));
 ///
 /// // Running `Query` needs a working `RequestBuilder` implementation
 /// #[cfg(feature = "ureq")]
@@ -133,6 +133,23 @@ impl Connection {
         Query::new(self)
             .set_endpoint(Endpoint::Execute)
             .switch_multi()
+    }
+
+    /// Retrieve `Query` instance for queries with __queued__ write
+    /// capability (_CREATE/INSERT_ statements)
+    ///
+    /// See <https://rqlite.io/docs/api/queued-writes/>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn execute_queue(&self) -> Query<state::NoLevelMulti> {
+        log::debug!("query[queue]: {:?}", self);
+        tracing::debug!("query[queue]: {:?}", self);
+
+        Query::new(self)
+            .set_endpoint(Endpoint::Execute)
+            .switch_multi()
+            .set_queue()
     }
 
     /// Get proxy
