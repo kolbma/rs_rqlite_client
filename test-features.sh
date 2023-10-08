@@ -1,7 +1,7 @@
 #!/bin/sh
 
 features="migration migration_embed ureq ureq_tls ureq_webpki"
-features_addon="log percent_encoding tracing ureq_charset ureq_socks_proxy url"
+features_addon="log monitor percent_encoding tracing ureq_charset ureq_socks_proxy url"
 
 cargo_test() {
     feature="$1"
@@ -9,13 +9,29 @@ cargo_test() {
 
     rc=0
     if [ -n "$feature" ] ; then
-        echo "$0: cargo test --no-default-features -F \"$feature $addon\""
-        cargo test --no-default-features -F "$feature $addon"
-        rc="$?"
+        [ -n "$clippy" ] && {
+            echo "$0: $clippy --no-deps --no-default-features -F \"$feature $addon\" -- -Dwarnings"
+            $clippy --no-deps --no-default-features -F "$feature $addon" -- -Dwarnings
+            rc="$?"
+        }
+
+        [ "$rc" -eq 0 ] && {
+            echo "$0: cargo test --no-default-features -F \"$feature $addon\""
+            cargo test --no-default-features -F "$feature $addon"
+            rc="$?"
+        }
     else
-        echo "$0: cargo test"
-        cargo test
-        rc="$?"
+        [ -n "$clippy" ] && {
+            echo "$0: $clippy --no-deps -- -Dwarnings"
+            $clippy --no-deps -- -Dwarnings
+            rc="$?"
+        }
+
+        [ "$rc" -eq 0 ] && {
+            echo "$0: cargo test"
+            cargo test
+            rc="$?"
+        }
     fi
 
     [ "$rc" -eq 0 ] || {
@@ -28,6 +44,10 @@ script_dir="$(dirname "$0")"
 script_dir="$(cd "$script_dir" && pwd)"
 
 default_features=$(grep "^default =" "$script_dir/Cargo.toml" | cut -d '[' -f 2 | tr -d '"[]')
+
+clippy="cargo clippy"
+$clippy -h >/dev/null 2>&1
+[ "$?" -eq 0 ] || clippy=""
 
 cargo_test
 
