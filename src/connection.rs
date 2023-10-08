@@ -152,6 +152,23 @@ impl Connection {
             .set_queue()
     }
 
+    /// Retrieve `Query` instance to query [`monitor::Monitor`](crate::monitor::Monitor)
+    /// [endpoints](crate::monitor::Endpoint)
+    ///
+    /// Requires feature `monitor`.
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/>
+    ///
+    #[cfg(feature = "monitor")]
+    #[must_use]
+    #[inline]
+    pub fn monitor(&self) -> Query<crate::monitor::Monitor> {
+        log::debug!("monitor: {:?}", self);
+        tracing::debug!("monitor: {:?}", self);
+
+        Query::new(self).monitor()
+    }
+
     /// Get proxy
     #[must_use]
     #[inline]

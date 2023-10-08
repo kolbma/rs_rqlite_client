@@ -1,57 +1,30 @@
-//! Database [`Response`] container for [`ResponseResult`]
-
-use std::time::Duration;
+//! Everything related to __rqlite__ database server `response` handling
 
 use crate::Error;
-pub(crate) use result::Result;
+pub use query::Query;
 
-pub mod result;
+pub mod mapping;
+pub mod query;
 
 /// Result type with [`Response`] or [`Error`]
-#[allow(clippy::module_name_repetitions)]
-pub type ResponseResult = std::result::Result<Response, Error>;
+pub type Result = std::result::Result<Response, Error>;
 
-/// Database [`Response`] container with `results` of [`Query`](super::Query)
-///
-/// See [`Result`] for available variants of `results` and [examples](./result/enum.Result.html#examples) to handle responses.
-///
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Response {
-    /// query results
-    results: Vec<Result>,
-    /// `sequence_number` of queued writes
-    #[serde(skip_serializing_if = "Option::is_none")]
-    sequence_number: Option<u64>,
-    /// if requested timing information
-    #[serde(skip_serializing_if = "Option::is_none")]
-    time: Option<f64>,
-}
-
-impl Response {
-    /// Get the duration of the request if available
-    #[must_use]
-    pub fn duration(&self) -> Option<Duration> {
-        self.time.map(Duration::from_secs_f64)
-    }
-
-    /// Iterator for available [`Result`]s
-    pub fn results(&self) -> std::slice::Iter<'_, Result> {
-        self.results.iter()
-    }
-
-    /// For queued writes there will be a `sequence_number`
-    #[must_use]
-    #[inline]
-    pub fn sequence_number(&self) -> Option<u64> {
-        self.sequence_number
-    }
-
-    /// Get the duration of the request if available in `f64` seconds
-    #[must_use]
-    #[inline]
-    pub fn time(&self) -> Option<f64> {
-        self.time
-    }
+/// [`Response`] `enum` for handling different __rqlited__ database server responses
+#[derive(Debug, PartialEq)]
+pub enum Response {
+    /// Response of [monitor::Endpoint::Nodes](crate::monitor::response::Nodes) (feature `monitor`)
+    #[cfg(feature = "monitor")]
+    Node(crate::monitor::response::Nodes),
+    /// Response of [monitor::Endpoint::Readyz](crate::monitor::response::Readyz) (feature `monitor`)
+    #[cfg(feature = "monitor")]
+    Readyz(crate::monitor::response::Readyz),
+    /// Response of [query::Endpoint::Execute](crate::query::Endpoint::Execute),
+    /// [query::Endpoint::Query](crate::query::Endpoint::Query),
+    /// [query::Endpoint::Request](crate::query::Endpoint::Request)
+    Query(Query),
+    /// Response of [monitor::Endpoint::Status](crate::monitor::response::Status) (feature `monitor`)
+    #[cfg(feature = "monitor")]
+    Status(crate::monitor::response::Status),
 }
 
 #[cfg(feature = "ureq")]
@@ -65,234 +38,110 @@ impl TryFrom<ureq::Response> for Response {
             return Err(Error::HttpError(status, response.status_text().to_string()));
         }
 
-        response.into_json::<Self>().map_err(Error::from)
+        let mut value = None;
+        let mut content = None;
+
+        // checks
+        if let Some(content_type) = response.header("Content-Type") {
+            let content_length = response
+                .header("Content-Length")
+                .and_then(|s| s.parse::<usize>().ok());
+
+            if content_type.starts_with("application/json") {
+                value = Some(response.into_json::<crate::Value>().map_err(Error::from)?);
+            } else if let Some(content_length) = content_length {
+                if content_length <= 200 && content_type.starts_with("text/plain") {
+                    content = response.into_string().ok();
+                } else {
+                    return Err("content-length too big".into());
+                }
+            } else {
+                return Err("unsupported response".into());
+            }
+        } else {
+            return Err("unsupported response".into());
+        }
+
+        // response type parsing - feature monitor
+        #[cfg(feature = "monitor")]
+        if let Some(value) = value {
+            if value.get("results").is_some() {
+                serde_json::from_value::<Query>(value)
+                    .map(Response::Query)
+                    .map_err(Error::from)
+            } else if value.get("build").is_some() {
+                serde_json::from_value::<crate::monitor::response::Status>(value)
+                    .map(Response::Status)
+                    .map_err(Error::from)
+            } else if value.is_object() {
+                serde_json::from_value::<crate::monitor::response::Nodes>(value)
+                    .map(Response::Node)
+                    .map_err(Error::from)
+            } else {
+                Err(Error::ResponseError(value))
+            }
+        } else if let Some(content) = content {
+            use std::str::FromStr;
+            Ok(Response::Readyz(
+                crate::monitor::response::Readyz::from_str(&content)?,
+            ))
+        } else {
+            Err("unsupported response".into())
+        }
+
+        // response type parsing - NOT feature monitor
+        #[cfg(not(feature = "monitor"))]
+        if let Some(value) = value {
+            if value.get("results").is_some() {
+                serde_json::from_value::<Query>(value)
+                    .map(Response::Query)
+                    .map_err(Error::from)
+            } else {
+                Err(Error::ResponseError(value))
+            }
+        } else {
+            let _ = content;
+            Err("unsupported response".into())
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::{collections::HashMap, time::Duration};
-
-    use super::{
-        result::{Associative, Result, Standard},
-        Response,
-    };
-    use crate::DataType;
-
-    #[test]
-    fn response_associative_json_test() {
-        let r = Response {
-            results: vec![Result::Associative(Associative {
-                rows: Vec::new(),
-                time: None,
-                types: HashMap::new(),
-            })],
-            sequence_number: None,
-            time: None,
-        };
-
-        let res = serde_json::to_string_pretty(&r);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let json = res.unwrap();
-        assert!(json.contains("\"results\": ["));
-        assert_eq!(
-            json,
-            "{\n  \"results\": [\n    {\n      \"rows\": [],\n      \"types\": {}\n    }\n  ]\n}"
-        );
-
-        let res = serde_json::to_string(&r);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let json = res.unwrap();
-        assert!(json.contains("\"results\":["));
-        assert_eq!(json, "{\"results\":[{\"rows\":[],\"types\":{}}]}");
-    }
-
-    #[test]
-    fn response_standard_json_test() {
-        let r = Response {
-            results: vec![Result::Standard(Standard {
-                time: None,
-                types: Vec::new(),
-                columns: Vec::new(),
-                values: Vec::new(),
-            })],
-            sequence_number: None,
-            time: None,
-        };
-
-        let res = serde_json::to_string_pretty(&r);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let json = res.unwrap();
-        assert!(json.contains("\"results\": ["));
-        assert_eq!(json, "{\n  \"results\": [\n    {\n      \"columns\": [],\n      \"types\": [],\n      \"values\": []\n    }\n  ]\n}");
-
-        let res = serde_json::to_string(&r);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let json = res.unwrap();
-        assert!(json.contains("\"results\":["));
-        assert_eq!(
-            json,
-            "{\"results\":[{\"columns\":[],\"types\":[],\"values\":[]}]}"
-        );
-    }
-
-    #[test]
-    fn response_standard_data_type_json_test() {
-        let r = Response {
-            results: vec![Result::Standard(Standard {
-                time: None,
-                types: vec![DataType::Integer, DataType::Text],
-                columns: vec!["id".to_string(), "value".to_string()],
-                values: vec![vec![1.into(), "test".into()]],
-            })],
-            sequence_number: None,
-            time: None,
-        };
-
-        let res = serde_json::to_string(&r);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let json = res.unwrap();
-        assert!(json.contains("\"results\":["));
-        assert_eq!(
-            json,
-            "{\"results\":[{\"columns\":[\"id\",\"value\"],\"types\":[\"integer\",\"text\"],\"values\":[[1,\"test\"]]}]}"
-        );
-    }
-
-    #[test]
-    fn deserialize_associative_test() {
-        let json =
-            "{\n  \"results\": [\n    {\n      \"rows\": [],\n      \"types\": {}\n    }\n  ]\n}";
-
-        let res: std::result::Result<Response, serde_json::Error> = serde_json::from_str(json);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let r = res.unwrap();
-        assert_eq!(r.results.len(), 1);
-        match &r.results[0] {
-            Result::Associative(_) => {}
-            _ => unreachable!(),
+#[allow(unreachable_patterns)]
+impl From<Response> for Query {
+    fn from(response: Response) -> Self {
+        match response {
+            Response::Query(r) => r,
+            _ => panic!("not matching"),
         }
     }
+}
 
-    #[test]
-    fn deserialize_error_test() {
-        let json = r#"{
-                "results": [
-                    {
-                        "error": "near \"nonsense\": syntax error"
-                    }
-                ],
-                "time": 2.478862
-            }"#;
-
-        let res: std::result::Result<Response, serde_json::Error> = serde_json::from_str(json);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let r = res.unwrap();
-        assert_eq!(r.results.len(), 1);
-        match &r.results[0] {
-            Result::Error(err) => {
-                assert!(!err.error.is_empty());
-                assert_eq!(&err.error, "near \"nonsense\": syntax error");
-                assert!(r.time.is_some());
-                #[allow(clippy::float_cmp)]
-                {
-                    assert!(r.time().unwrap() == 2.478_862_f64);
-                }
-                assert_eq!(
-                    r.duration().unwrap(),
-                    Duration::from_secs_f64(2.478_862_f64)
-                );
-            }
-            _ => unreachable!("{:#?}", r),
+#[cfg(feature = "monitor")]
+impl From<Response> for crate::monitor::response::Nodes {
+    fn from(response: Response) -> Self {
+        match response {
+            Response::Node(r) => r,
+            _ => panic!("not matching"),
         }
     }
+}
 
-    #[test]
-    fn deserialize_standard_test() {
-        let json = "{\n  \"results\": [\n    {\n      \"columns\": [],\n      \"types\": [],\n      \"values\": []\n    }\n  ]\n}";
-
-        let res: std::result::Result<Response, serde_json::Error> = serde_json::from_str(json);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let r = res.unwrap();
-        assert_eq!(r.results.len(), 1);
-        match &r.results[0] {
-            Result::Standard(_) => {}
-            _ => unreachable!(),
+#[cfg(feature = "monitor")]
+impl From<Response> for crate::monitor::response::Readyz {
+    fn from(response: Response) -> Self {
+        match response {
+            Response::Readyz(r) => r,
+            _ => panic!("not matching"),
         }
     }
+}
 
-    #[test]
-    fn deserialize_multi_test() {
-        let json = r#"{
-            "results": [
-                {
-                    "last_insert_id": 1,
-                    "rows_affected": 1,
-                    "time": 0.000074612,
-                    "rows": null
-                },
-                {
-                    "last_insert_id": 2,
-                    "rows_affected": 1,
-                    "time": 0.000044645,
-                    "rows": null
-                },
-                {
-                    "types": { "age": "integer", "id": "integer", "name": "text"},
-                    "rows": [
-                        {"age": 20, "id": 1, "name": "fiona"},
-                        {"age": 30, "id": 2, "name": "declan"}
-                    ],
-                    "time": 0.000055248
-                },
-                {
-                    "error": "no such table: bar"
-                }
-            ],
-            "time": 0.010571084
-        }"#;
-
-        let res: std::result::Result<Response, serde_json::Error> = serde_json::from_str(json);
-
-        assert!(res.is_ok(), "error: {}", res.err().unwrap());
-        let r = res.unwrap();
-        assert_eq!(r.results.len(), 4);
-        let mut results = r.results();
-        match results.next().unwrap() {
-            Result::Execute(execute) => {
-                assert_eq!(execute.last_insert_id, 1);
-                assert!(execute.rows.is_none());
-            }
-            _ => unreachable!(),
-        }
-        match results.next().unwrap() {
-            Result::Execute(_) => {}
-            _ => unreachable!(),
-        }
-        match results.next().unwrap() {
-            Result::Associative(associative) => {
-                assert_eq!(associative.types.get("age").unwrap(), &DataType::Integer);
-                assert_eq!(associative.types.get("name").unwrap(), &DataType::Text);
-                assert_eq!(associative.rows[0].get("age").unwrap(), 20);
-                assert_eq!(associative.rows[1].get("name").unwrap(), "declan");
-                #[allow(clippy::float_cmp)]
-                {
-                    assert_eq!(associative.time.unwrap(), 0.000_055_248);
-                }
-            }
-            _ => unreachable!(),
-        }
-        match results.next().unwrap() {
-            Result::Error(_) => {}
-            _ => unreachable!(),
+#[cfg(feature = "monitor")]
+impl From<Response> for crate::monitor::response::Status {
+    fn from(response: Response) -> Self {
+        match response {
+            Response::Status(r) => r,
+            _ => panic!("not matching"),
         }
     }
 }

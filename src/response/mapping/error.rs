@@ -21,6 +21,8 @@ pub struct Error {
     pub error: String,
 }
 
+impl std::error::Error for Error {}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("result error: {}", self.error))

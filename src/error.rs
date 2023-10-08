@@ -16,8 +16,14 @@ pub enum Error {
     #[cfg(feature = "migration")]
     MigrationError(MigrationError),
 
+    /// `Error`s ocurred during response handling
+    ResponseError(crate::Value),
+
     /// `ResultError`
     ResultError(String),
+
+    /// `serde_json::Error`
+    SerdeError(serde_json::Error),
 
     /// [`ureq::Error`] (required feature _ureq_)
     #[cfg(feature = "ureq")]
@@ -42,7 +48,11 @@ impl std::fmt::Display for Error {
             #[cfg(feature = "migration")]
             Error::MigrationError(inner) => inner.fmt(f),
 
+            Error::ResponseError(v) => f.write_fmt(format_args!("response error: {v:?}")),
+
             Error::ResultError(msg) => f.write_str(msg),
+
+            Error::SerdeError(inner) => inner.fmt(f),
 
             #[cfg(feature = "ureq")]
             Error::UreqError(inner, sql) => f.write_fmt(format_args!("{inner} [{sql:?}]")),
@@ -50,6 +60,12 @@ impl std::fmt::Display for Error {
             #[cfg(feature = "url")]
             Error::UrlParseError(inner) => inner.fmt(f),
         }
+    }
+}
+
+impl From<&str> for Error {
+    fn from(err: &str) -> Self {
+        Self::ResultError(err.to_string())
     }
 }
 
@@ -63,6 +79,12 @@ impl From<std::io::Error> for Error {
 impl From<MigrationError> for Error {
     fn from(value: MigrationError) -> Self {
         Self::MigrationError(value)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(value: serde_json::Error) -> Self {
+        Self::SerdeError(value)
     }
 }
 

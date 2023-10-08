@@ -1,15 +1,26 @@
 //! [`SchemaVersion`] provides information about versioned database schemas
 
 /// [`SchemaVersion`] provides information about versioned database schemas
-#[derive(Debug, Eq, PartialEq)]
-pub struct SchemaVersion(u64);
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, PartialOrd)]
+pub struct SchemaVersion(pub u64);
 
-impl<T> From<T> for SchemaVersion
-where
-    T: Into<u64> + Copy,
-{
-    fn from(value: T) -> Self {
-        Self(value.into())
+impl SchemaVersion {
+    /// Checked addition with a signed integer. Computes self + `rhs`, returning `None` if overflow occurred.
+    #[inline]
+    pub fn checked_add_signed(&self, rhs: i32) -> Option<Self> {
+        u64::from(self).checked_add_signed(i64::from(rhs)).map(Self)
+    }
+
+    /// Checked integer subtraction. Computes self - `rhs`, returning `None` if overflow occurred.
+    #[inline]
+    pub fn checked_sub(&self, value: i32) -> Option<Self> {
+        if value < 0 {
+            u64::from(self).checked_add_signed(-i64::from(value))
+        } else {
+            // unwraps for sure in this condition
+            u64::from(self).checked_sub(u64::try_from(value).unwrap_or_default())
+        }
+        .map(Self)
     }
 }
 

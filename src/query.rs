@@ -49,7 +49,7 @@ parameterized statements.
 For convenience with different types of parameters, there is the [`crate::varparam!`]-macro.
 
 */
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Query<'a, T>
 where
@@ -164,10 +164,10 @@ where
     /// single request.
     ///
     /// Each response includes a monotonically-increasing `sequence_number`, which allows to track
-    /// the persisting of the data with the [`Endpoint::Status`].
+    /// the persisting of the data with the [`Endpoint::Status`](super::monitor::Endpoint::Status).
     ///
     /// With [`Query::is_wait()`] true, the data has been persisted when the
-    /// [`ResponseResult`](super::ResponseResult) is available and successful.
+    /// [`response::Result`](crate::response::Result) is available and successful.
     ///
     /// See <https://rqlite.io/docs/api/queued-writes/>
     ///
@@ -247,10 +247,15 @@ where
     /// [Error](crate::Error) on failing [Request](crate::request::Request) run
     ///
     #[cfg(feature = "ureq")]
-    pub fn request_run(&self) -> crate::response::ResponseResult {
+    pub fn request_run(&self) -> crate::response::Result {
         use crate::request_builder::RequestBuilder;
         match self.endpoint {
-            Endpoint::Query | Endpoint::Nodes | Endpoint::Readyz | Endpoint::Status => {
+            #[cfg(feature = "monitor")]
+            Endpoint::Query | Endpoint::Monitor(_) => {
+                crate::request::Request::<crate::request::request_type::Get>::new().run(self)
+            }
+            #[cfg(not(feature = "monitor"))]
+            Endpoint::Query => {
                 crate::request::Request::<crate::request::request_type::Get>::new().run(self)
             }
             Endpoint::Execute | Endpoint::Request => {
@@ -370,6 +375,14 @@ where
 
         if self.is_associative {
             query_args.push("associative".to_string());
+        }
+
+        if self.is_noleader {
+            query_args.push("noleader".to_string());
+        }
+
+        if self.is_nonvoters {
+            query_args.push("nonvoters".to_string());
         }
 
         if self.is_pretty {
@@ -492,6 +505,36 @@ where
 
         // checked in `if` above and set to Not-None
         self.url_cache.borrow().clone().unwrap()
+    }
+
+    /// Enable noleader query param
+    #[cfg(feature = "monitor")]
+    #[must_use]
+    #[inline]
+    pub(crate) fn enable_noleader_helper(mut self) -> Self {
+        if self.is_noleader {
+            self
+        } else {
+            self.is_noleader = true;
+            log::trace!("is_noleader: {}", self.is_noleader);
+            tracing::trace!("is_noleader: {}", self.is_noleader);
+            self.url_modified()
+        }
+    }
+
+    /// Enable nonvoters query param
+    #[cfg(feature = "monitor")]
+    #[must_use]
+    #[inline]
+    pub(crate) fn enable_nonvoters_helper(mut self) -> Self {
+        if self.is_nonvoters {
+            self
+        } else {
+            self.is_nonvoters = true;
+            log::trace!("is_nonvoters: {}", self.is_nonvoters);
+            tracing::trace!("is_nonvoters: {}", self.is_nonvoters);
+            self.url_modified()
+        }
     }
 
     #[inline]
@@ -619,7 +662,7 @@ where
     #[cfg(test)]
     #[cfg(feature = "url")]
     #[inline]
-    fn create_path_with_query(&self) -> String {
+    pub(crate) fn create_path_with_query(&self) -> String {
         let mut s = self.create_url().path().to_string();
         if let Some(query) = self.create_url().query() {
             s.push('?');
@@ -633,7 +676,7 @@ where
     #[cfg(feature = "percent_encoding")]
     #[cfg(not(feature = "url"))]
     #[inline]
-    fn create_path_with_query(&self) -> String {
+    pub(crate) fn create_path_with_query(&self) -> String {
         let mut s = self.endpoint.to_string();
         let query = self.create_url_query();
         if !query.is_empty() {
@@ -941,6 +984,19 @@ gen_query!(state::NoLevel, state::NoLevelMulti);
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::NoLevel> {
+    /// Get a `Query` to [`monitor::Monitor`](crate::monitor::Monitor) rqlited
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/>
+    ///
+    #[cfg(feature = "monitor")]
+    pub fn monitor(self) -> Query<'a, crate::monitor::Monitor> {
+        transition(
+            self.set_endpoint(Endpoint::Monitor(crate::monitor::Endpoint::Status)),
+            ConsistencyLevel::Nolevel,
+            None,
+        )
+    }
+
     /// Create a new `Query`
     #[must_use]
     #[inline]
@@ -1044,6 +1100,50 @@ impl<'a> Query<'a, state::NoLevelMulti> {
     #[must_use]
     pub fn set_weak(self) -> Query<'a, state::LevelWeakMulti> {
         transition(self, ConsistencyLevel::Weak, None)
+    }
+}
+
+/// `Query<Monitor>`
+///
+/// Requires feature `monitor`.
+///
+/// See [`monitor::Monitor`](crate::monitor::Monitor)
+///
+#[cfg(feature = "monitor")]
+impl<'a> Query<'a, crate::monitor::Monitor> {
+    /// _Nodes_ return basic information for nodes in the cluster, as seen by the node
+    /// receiving the nodes request. The receiving node will also check whether it can actually
+    /// connect to all other nodes in the cluster.  
+    /// This is an effective way to determine the cluster leader, and the leader’s HTTP API address.
+    /// It can also be used to check if the cluster is basically running.
+    /// If the other nodes are reachable, it probably is.
+    ///
+    /// By default, the node only checks if voting nodes are contactable.
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#nodes-api>
+    ///
+    pub fn nodes(self) -> Query<'a, crate::monitor::Nodes> {
+        transition(
+            self.set_endpoint(Endpoint::Monitor(crate::monitor::Endpoint::Nodes)),
+            ConsistencyLevel::Nolevel,
+            None,
+        )
+    }
+
+    /// rqlite nodes serve a _ready_ status [`monitor::Endpoint::Readyz`](crate::monitor::Endpoint::Readyz)
+    /// if the node is ready to respond to database requests and cluster management operations.
+    ///
+    /// If you wish to check if the node is running, and responding to HTTP requests, regardless of
+    /// Leader status, `enable_noleader`.
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#readiness-checks>
+    ///
+    pub fn readyz(self) -> Query<'a, crate::monitor::Readyz> {
+        transition(
+            self.set_endpoint(Endpoint::Monitor(crate::monitor::Endpoint::Readyz)),
+            ConsistencyLevel::Nolevel,
+            None,
+        )
     }
 }
 

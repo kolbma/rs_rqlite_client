@@ -20,7 +20,7 @@ use std::time::Duration;
 
 use lazy_static::lazy_static;
 
-use rqlite_client::{Connection, DataType, Result};
+use rqlite_client::{response::mapping::Mapping, Connection, DataType, Response};
 
 mod test_rqlited;
 
@@ -52,6 +52,11 @@ fn queue_write_test() {
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
         let r = r.unwrap();
+        // irrefutable_let_patterns: with no monitor feature
+        #[allow(irrefutable_let_patterns)]
+        let Response::Query(r) = r else {
+            unreachable!()
+        };
         assert!(r.sequence_number().is_some(), "{r:?}");
         assert!(r.results().next().is_none());
 
@@ -65,8 +70,13 @@ fn queue_write_test() {
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
         let r = r.unwrap();
+        // irrefutable_let_patterns: with no monitor feature
+        #[allow(irrefutable_let_patterns)]
+        let Response::Query(r) = r else {
+            unreachable!()
+        };
 
-        if let Some(Result::Standard(standard)) = r.results().next() {
+        if let Some(Mapping::Standard(standard)) = r.results().next() {
             assert_eq!(standard.types[0], DataType::Integer);
             assert_eq!(standard.values[0][0].as_u64().unwrap(), 100_u64, "{:?}", standard.values[0]);
         }
@@ -92,6 +102,11 @@ fn queue_write_wait_test() {
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
         let r = r.unwrap();
+        // irrefutable_let_patterns: with no monitor feature
+        #[allow(irrefutable_let_patterns)]
+        let Response::Query(r) = r else {
+            unreachable!()
+        };
         assert!(r.sequence_number().is_some(), "{r:?}");
         assert!(r.results().next().is_none());
 
@@ -103,8 +118,13 @@ fn queue_write_wait_test() {
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
         let r = r.unwrap();
+        // irrefutable_let_patterns: with no monitor feature
+        #[allow(irrefutable_let_patterns)]
+        let Response::Query(r) = r else {
+            unreachable!()
+        };
 
-        if let Some(Result::Standard(standard)) = r.results().next() {
+        if let Some(Mapping::Standard(standard)) = r.results().next() {
             assert_eq!(standard.types[0], DataType::Integer);
             assert_eq!(standard.values[0][0].as_u64().unwrap(), 100_u64, "{:?}", standard.values[0]);
         }

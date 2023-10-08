@@ -28,25 +28,36 @@ See [Usage](#usage) and [Examples](#examples) for further information!
 
     Uses [`log`](https://crates.io/crates/log) for some logging. Logger need to be configured via `log` crate
     in your application code.
+    <br><br>
 
 * `migration`
 
     Enables support for schema migration of __rqlite__ database.
     See [`Migration`](https://docs.rs/rqlite_client/latest/rqlite_client/migration/struct.Migration.html).
+    <br><br>
 
 * `migration_embed`
 
     Enables schema migration support with embedding SQL from files in the application code.
     See [`Migration`](https://docs.rs/rqlite_client/latest/rqlite_client/migration/struct.Migration.html).
+    <br><br>
+
+* `monitor`
+
+    Enables monitor endpoints.
+    See [Monitor](https://docs.rs/rqlite_client/latest/rqlite_client/monitor/index.html).
+    <br><br>
 
 * `percent_encoding`
 
     If you disable feature `url`, you have to add feature `percent_encoding` to get working _GET_ _SELECT_ queries.
+    <br><br>
 
 * `tracing`
 
     Uses [`tracing`](https://crates.io/crates/tracing) for some logging. Tracing need to be configured
     via `tracing` crate in your application code.
+    <br><br>
 
 * `ureq`
 
@@ -55,22 +66,27 @@ See [Usage](#usage) and [Examples](#examples) for further information!
     own [`RequestBuilder`](https://docs.rs/rqlite_client/latest/rqlite_client/trait.RequestBuilder.html)
     implementation to handle your replacement
     of [`Request`](https://docs.rs/rqlite_client/latest/rqlite_client/struct.Request.html).
+    <br><br>
 
 * `ureq_charset`
 
     Enables Non-UTF8 charset handling in `ureq` requests.
+    <br><br>
 
 * `ureq_socks_proxy`
 
     Enables support of __Socks Proxy__ Urls in `ureq`.
+    <br><br>
 
 * `ureq_tls`
 
     Enables __TLS__ support for `ureq`-requests with loading certs from system store.
+    <br><br>
 
 * `ureq_webpki`
 
     Enables __TLS__ support for `ureq`-requests with only embedded Mozilla cert store.
+    <br><br>
 
 * `url`
 
@@ -163,7 +179,10 @@ A simple query of your local database might look like...
 
 use std::time::Duration;
 
-use rqlite_client::{request_type::Get, Connection, Query, Request, RequestBuilder, Result};
+use rqlite_client::{
+    request_type::Get, response, Connection, Mapping, Query, Request,
+    RequestBuilder, response::Result,
+};
 
 let url = "http://localhost:4001";
 
@@ -176,10 +195,10 @@ let query = con
     .query()
     .set_sql_str_slice(&["SELECT COUNT(*) FROM tbl WHERE col = ?", "test"]);
 
-let result = query.request_run();
+let result = response::query::Query::try_from(query.request_run().unwrap());
 
 if let Ok(response) = result {
-    if let Some(Result::Standard(success)) = response.results().next() {
+    if let Some(Mapping::Standard(success)) = response.results().next() {
         let row = 0;
         let col = 0;
         let rows_found = &success.values[row][col];
@@ -205,7 +224,10 @@ and [`request_type::Post`](https://docs.rs/rqlite_client/latest/rqlite_client/re
 
 use std::time::Duration;
 
-use rqlite_client::{request_type::Post, Connection, Query, Request, RequestBuilder, Result};
+use rqlite_client::{
+    request_type::Post, response, Connection, Mapping, Query, Request,
+    RequestBuilder, response::Result,
+};
 
 let url = "http://localhost:4001";
 
@@ -218,10 +240,10 @@ let query = con
     .execute()
     .push_sql_str_slice(&["INSERT INTO tbl (col) VALUES (?)", "test"]);
 
-let result = query.request_run();
+let result = response::query::Query::try_from(query.request_run().unwrap());
 
 if let Ok(response) = result {
-    if let Some(Result::Execute(success)) = response.results().next() {
+    if let Some(Mapping::Execute(success)) = response.results().next() {
         println!("last inserted primary key {}", success.last_insert_id);
     }
 }
@@ -266,8 +288,8 @@ pub use query::{consistency_level, endpoint, freshness, state, timeout, Query};
 #[cfg(feature = "ureq")]
 pub use request::{request_type, Request, RequestType};
 pub use request_builder::RequestBuilder;
-pub use response::result::{self, Result};
-pub use response::{Response, ResponseResult};
+#[doc(inline)]
+pub use response::{mapping::Mapping, Response};
 pub use serde_json::Value;
 #[cfg(feature = "ureq")]
 pub use ureq;
@@ -279,10 +301,11 @@ mod error;
 pub(crate) mod log;
 #[cfg(feature = "migration")]
 pub mod migration;
+pub mod monitor;
 mod query;
 mod request;
 mod request_builder;
-mod response;
+pub mod response;
 #[cfg(test)]
 mod test_rqlited;
 pub(crate) mod tracing;

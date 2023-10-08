@@ -43,7 +43,9 @@ impl TryFrom<crate::Error> for Error {
             crate::Error::IoError(err) => Err(Error::DataMalformat(err.to_string())),
             #[cfg(feature = "migration")]
             crate::Error::MigrationError(err) => Err(err),
+            crate::Error::ResponseError(_v) => Err(Error::Internal("response error")),
             crate::Error::ResultError(msg) => Err(Error::QueryFail(msg)),
+            crate::Error::SerdeError(_err) => Err(Error::Internal("json parse failed")),
             #[cfg(feature = "ureq")]
             crate::Error::UreqError(err, sql) => Err(Error::QueryFail(format!("{err} [{sql:?}]"))),
             #[cfg(feature = "url")]

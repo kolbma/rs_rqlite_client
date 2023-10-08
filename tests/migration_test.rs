@@ -59,7 +59,7 @@ fn migration_to_test() {
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path);
-        let err = m.migrate_to(&TEST_CONNECTION, Some(&SchemaVersion::from(u64::MAX)));
+        let err = m.migrate_to(&TEST_CONNECTION, Some(&SchemaVersion(u64::MAX)));
 
         assert!(err.is_err());
         assert_eq!(
@@ -67,7 +67,7 @@ fn migration_to_test() {
             format!("data malformat: no migration {}", u64::MAX)
         );
 
-        let to_version = SchemaVersion::from(1_u64);
+        let to_version = SchemaVersion(1_u64);
 
         let version = m
             .migrate_to(&TEST_CONNECTION, Some(&to_version))
@@ -98,7 +98,7 @@ fn rollback_to_test() {
         }));
         assert!(db_version > 0);
 
-        let err = m.rollback_to(&TEST_CONNECTION, &SchemaVersion::from(u64::MAX));
+        let err = m.rollback_to(&TEST_CONNECTION, &SchemaVersion(u64::MAX));
 
         assert!(err.is_err());
         assert_eq!(
@@ -106,7 +106,7 @@ fn rollback_to_test() {
             format!("data malformat: no rollback {}", u64::MAX)
         );
 
-        let to_version = SchemaVersion::from(0_u64);
+        let to_version = SchemaVersion(0_u64);
 
         let version = m
             .rollback_to(&TEST_CONNECTION, &to_version)

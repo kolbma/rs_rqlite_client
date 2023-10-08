@@ -23,7 +23,7 @@ use lazy_static::lazy_static;
 
 use rqlite_client::{
     migration::{Migration, MigrationError, SchemaVersion},
-    state, Connection, Query, RequestBuilder, ResponseResult,
+    state, Connection, Query, RequestBuilder,
 };
 
 mod test_rqlited;
@@ -34,7 +34,7 @@ impl<T> RequestBuilder<T> for NoUreqRequest
 where
     T: state::State,
 {
-    fn run(&self, _query: &Query<T>) -> ResponseResult {
+    fn run(&self, _query: &Query<T>) -> rqlite_client::response::Result {
         Err(MigrationError::QueryFail("query not implemented".to_string()).into())
     }
 }
@@ -70,7 +70,7 @@ fn migration_to_test() {
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path).set_request_builder(NoUreqRequest {});
-        let result = m.migrate_to(&TEST_CONNECTION, Some(&SchemaVersion::from(u64::MAX)));
+        let result = m.migrate_to(&TEST_CONNECTION, Some(&SchemaVersion(u64::MAX)));
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");
@@ -78,7 +78,7 @@ fn migration_to_test() {
             unreachable!();
         }
 
-        let to_version = SchemaVersion::from(1_u64);
+        let to_version = SchemaVersion(1_u64);
 
         let result = m.migrate_to(&TEST_CONNECTION, Some(&to_version));
 
@@ -104,7 +104,7 @@ fn rollback_to_test() {
             unreachable!();
         }
 
-        let result = m.rollback_to(&TEST_CONNECTION, &SchemaVersion::from(u64::MAX));
+        let result = m.rollback_to(&TEST_CONNECTION, &SchemaVersion(u64::MAX));
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");
@@ -112,7 +112,7 @@ fn rollback_to_test() {
             unreachable!();
         }
 
-        let to_version = SchemaVersion::from(0_u64);
+        let to_version = SchemaVersion(0_u64);
 
         let result = m.rollback_to(&TEST_CONNECTION, &to_version);
 

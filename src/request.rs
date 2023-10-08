@@ -8,10 +8,11 @@ use lazy_static::lazy_static;
 #[allow(clippy::module_name_repetitions)]
 pub use self::request_type::RequestType;
 use self::request_type::{Get, Post};
-use crate::{log, tracing, Connection};
+use crate::response::Result;
+use crate::{log, tracing, Connection, Response};
 use crate::{
     query::{Query, State},
-    Error, RequestBuilder, Response, ResponseResult,
+    Error, RequestBuilder,
 };
 
 #[allow(clippy::module_name_repetitions)]
@@ -75,6 +76,7 @@ pub(crate) fn user_agent(connection: Option<&Connection>) -> ureq::Agent {
     let agent = if let Some(proxy) = proxy {
         log::debug!("try proxy {proxy}");
         tracing::debug!("try proxy {proxy}");
+        #[allow(clippy::needless_borrow)]
         match ureq::Proxy::new(&proxy) {
             Ok(ureq_proxy) => {
                 log::info!("use proxy {proxy}");
@@ -106,7 +108,7 @@ lazy_static! {
 }
 
 impl Request<Get> {
-    fn request<T: State>(agent: Option<&ureq::Agent>, query: &Query<T>) -> ResponseResult {
+    fn request<T: State>(agent: Option<&ureq::Agent>, query: &Query<T>) -> Result {
         log::debug!("[GET] {}: {:?}", query.to_string(), query.sql());
         tracing::debug!("[GET] {}: {:?}", query.to_string(), query.sql());
 
@@ -133,7 +135,7 @@ impl Request<Get> {
 }
 
 impl Request<Post> {
-    fn request<T: State>(agent: Option<&ureq::Agent>, query: &Query<T>) -> ResponseResult {
+    fn request<T: State>(agent: Option<&ureq::Agent>, query: &Query<T>) -> Result {
         log::debug!("[POST] {}: {:?}", query.to_string(), query.sql());
         tracing::debug!("[POST] {}: {:?}", query.to_string(), query.sql());
 
@@ -203,7 +205,7 @@ where
     S: State,
 {
     #[inline]
-    fn run(&self, query: &Query<S>) -> ResponseResult {
+    fn run(&self, query: &Query<S>) -> Result {
         Self::request(self.agent.as_ref(), query)
     }
 }
@@ -213,7 +215,7 @@ where
     S: State,
 {
     #[inline]
-    fn run(&self, query: &Query<S>) -> ResponseResult {
+    fn run(&self, query: &Query<S>) -> Result {
         Self::request(self.agent.as_ref(), query)
     }
 }
@@ -226,7 +228,10 @@ mod tests {
 
     use crate::{
         query::Query,
-        result::{self, Result},
+        response::{
+            self,
+            mapping::{self, Mapping},
+        },
         test_rqlited::TEST_RQLITED_DB,
         Connection, DataType, Request, RequestBuilder,
     };
@@ -263,14 +268,14 @@ mod tests {
 
             assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
-            let r = r.unwrap();
+            let r = response::query::Query::from(r.unwrap());
             let result = r.results().next().unwrap();
 
             match result {
-                Result::Standard(result) => {
+                Mapping::Standard(result) => {
                     assert_eq!(
                         result,
-                        &result::Standard {
+                        &mapping::Standard {
                             columns: vec!["1".to_string()],
                             time: None,
                             types: vec![DataType::Integer],
@@ -294,14 +299,14 @@ mod tests {
 
             assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
-            let r = r.unwrap();
+            let r = response::query::Query::from(r.unwrap());
             let result = r.results().next().unwrap();
 
             match result {
-                Result::Standard(result) => {
+                Mapping::Standard(result) => {
                     assert_eq!(
                         result,
-                        &result::Standard {
+                        &mapping::Standard {
                             columns: vec!["1".to_string()],
                             time: None,
                             types: vec![DataType::Integer],
@@ -386,15 +391,16 @@ mod tests {
 
             assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
-            let r = r.unwrap();
+            let r = response::query::Query::from(r.unwrap());
+
             let mut results = r.results();
             let result = results.next().unwrap();
 
             match result {
-                Result::Standard(result) => {
+                Mapping::Standard(result) => {
                     assert_eq!(
                         result,
-                        &result::Standard {
+                        &mapping::Standard {
                             columns: vec!["1".to_string()],
                             time: None,
                             types: vec![DataType::Integer],
@@ -408,10 +414,10 @@ mod tests {
             let result = results.next().unwrap();
 
             match result {
-                Result::Standard(result) => {
+                Mapping::Standard(result) => {
                     assert_eq!(
                         result,
-                        &result::Standard {
+                        &mapping::Standard {
                             columns: vec!["date()".to_string()],
                             time: None,
                             types: vec![DataType::Text],

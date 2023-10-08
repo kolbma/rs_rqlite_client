@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 
-use rqlite_client::{state, Connection, Error, Query, RequestBuilder, ResponseResult};
+use rqlite_client::{response, state, Connection, Error, Query, RequestBuilder};
 
 struct ImplRequestTest {}
 
@@ -8,8 +8,8 @@ impl<T> RequestBuilder<T> for ImplRequestTest
 where
     T: state::State,
 {
-    fn run(&self, query: &Query<T>) -> ResponseResult {
-        ResponseResult::Err(Error::ResultError(format!(
+    fn run(&self, query: &Query<T>) -> response::Result {
+        Result::Err(Error::ResultError(format!(
             "ImplRequestTest is dummy impl: {query}"
         )))
     }

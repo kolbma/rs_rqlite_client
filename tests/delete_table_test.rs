@@ -18,7 +18,9 @@
 
 use lazy_static::lazy_static;
 
-use rqlite_client::{request_type::Post, result, Connection, Request, RequestBuilder};
+use rqlite_client::{
+    request_type::Post, response::mapping, Connection, Request, RequestBuilder, Response,
+};
 
 mod test_rqlited;
 
@@ -43,16 +45,22 @@ fn delete_table_test_test() {
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
         let r = r.unwrap();
+        // irrefutable_let_patterns: with no monitor feature
+        #[allow(irrefutable_let_patterns)]
+        let Response::Query(r) = r
+        else {
+            unreachable!()
+        };
         let result = r.results().next().unwrap();
 
         match result {
-            result::Result::Error(err) => assert_eq!(
+            mapping::Mapping::Error(err) => assert_eq!(
                 err,
-                &result::Error {
+                &mapping::Error {
                     error: "table test already exists".to_string()
                 }
             ),
-            result::Result::Empty(result) => assert_eq!(result, &result::Empty::default()),
+            mapping::Mapping::Empty(result) => assert_eq!(result, &mapping::Empty::default()),
             _ => unreachable!("{:#?}", r),
         }
 
@@ -62,11 +70,17 @@ fn delete_table_test_test() {
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
         let r = r.unwrap();
+        // irrefutable_let_patterns: with no monitor feature
+        #[allow(irrefutable_let_patterns)]
+        let Response::Query(r) = r
+        else {
+            unreachable!()
+        };
         let result = r.results().next().unwrap();
 
         match result {
-            result::Result::Empty(result) => assert_eq!(result, &result::Empty::default()),
-            result::Result::Execute(_) => {}
+            mapping::Mapping::Empty(result) => assert_eq!(result, &mapping::Empty::default()),
+            mapping::Mapping::Execute(_) => {}
             _ => unreachable!("{:#?}", r),
         }
     });

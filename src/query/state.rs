@@ -1,4 +1,4 @@
-//! Consistency states for `Query<state>`
+//! Consistency states for `Query<State>`
 //!
 //! See [`ConsistencyLevel`](super::ConsistencyLevel) for details.
 //!
