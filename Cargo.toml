@@ -49,10 +49,11 @@ time = { version = "0.3.29", features = ["formatting"] }
 httpdate = { version = "1.0.3" }
 
 [features]
-default = ["ureq", "url"]
+default = ["monitor", "ureq", "url"]
 log = ["dep:log"]
 migration = []
 migration_embed = ["migration", "dep:rust-embed"]
+monitor = []
 percent_encoding = ["dep:percent-encoding"]
 tracing = ["dep:tracing"]
 ureq = ["dep:ureq"]
