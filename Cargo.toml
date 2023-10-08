@@ -1,6 +1,6 @@
 [package]
 name = "rqlite_client"
-version = "0.0.1-alpha.2"
+version = "0.0.1-alpha.3"
 authors = ["Markus Kolb"]
 description = "rqlite database client with optional extra convenience"
 documentation = "https://docs.rs/rqlite_client/"
