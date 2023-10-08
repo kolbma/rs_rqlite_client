@@ -47,28 +47,43 @@ impl TestRqlited {
     fn start() -> Child {
         let data_dir = env!("OUT_DIR").to_string() + "/rqlite_data";
 
-        let stdout_file = env!("OUT_DIR").to_string() + "/rqlited_stdout.log";
-        let stdout = OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(&stdout_file)
-            .unwrap();
-        let _ = writeln!(std::io::stdout(), "rqlited stdout: {stdout_file}");
+        let is_redirect_output = !["0", "off", "no"].contains(
+            &std::env::var("RQLITED_REDIRECT_OUTPUT")
+                .unwrap_or_default()
+                .trim()
+                .to_lowercase()
+                .as_str(),
+        );
 
-        let stderr_file = env!("OUT_DIR").to_string() + "/rqlited_stderr.log";
-        let stderr = OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(&stderr_file)
-            .unwrap();
-        let _ = writeln!(std::io::stdout(), "rqlited stderr: {stderr_file}");
+        if is_redirect_output {
+            let stdout_file = env!("OUT_DIR").to_string() + "/rqlited_stdout.log";
+            let stdout = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&stdout_file)
+                .unwrap();
+            let _ = writeln!(std::io::stdout(), "rqlited stdout: {stdout_file}");
 
-        Command::new(String::from("./rqlite/") + std::env::consts::ARCH + "/rqlite/rqlited")
-            .arg(&data_dir)
-            .stdout(stdout)
-            .stderr(stderr)
-            .spawn()
-            .expect("rqlited spawned")
+            let stderr_file = env!("OUT_DIR").to_string() + "/rqlited_stderr.log";
+            let stderr = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&stderr_file)
+                .unwrap();
+            let _ = writeln!(std::io::stdout(), "rqlited stderr: {stderr_file}");
+
+            Command::new(String::from("./rqlite/") + std::env::consts::ARCH + "/rqlite/rqlited")
+                .arg(&data_dir)
+                .stdout(stdout)
+                .stderr(stderr)
+                .spawn()
+                .expect("rqlited spawned")
+        } else {
+            Command::new(String::from("./rqlite/") + std::env::consts::ARCH + "/rqlite/rqlited")
+                .arg(&data_dir)
+                .spawn()
+                .expect("rqlited spawned")
+        }
     }
 
     #[inline]
