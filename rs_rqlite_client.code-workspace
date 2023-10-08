@@ -8,6 +8,7 @@
 		"rust-analyzer.cargo.features": [
 			"log",
 			"migration_embed",
+			"monitor",
 			"ureq_tls",
 			"url"
 		],
