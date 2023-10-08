@@ -49,7 +49,8 @@ fn create_table_test_test() {
         let r = r.unwrap();
         // irrefutable_let_patterns: with no monitor feature
         #[allow(irrefutable_let_patterns)]
-        let Response::Query(r) = r else {
+        let Response::Query(r) = r
+        else {
             unreachable!()
         };
         let result = r.results().next().unwrap();
@@ -80,7 +81,8 @@ fn create_table_error_test() {
         let r = r.unwrap();
         // irrefutable_let_patterns: with no monitor feature
         #[allow(irrefutable_let_patterns)]
-        let Response::Query(r) = r else {
+        let Response::Query(r) = r
+        else {
             unreachable!()
         };
         let result = r.results().next().unwrap();
