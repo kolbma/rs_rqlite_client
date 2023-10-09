@@ -9,7 +9,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_MSRV_TOOLCHAIN: 1.67.0
+  RUSTC_WRAPPER: "sccache"
   RQLITED_REDIRECT_OUTPUT: off
+  RQLITED_TESTS_START: no
+  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   test-stable-all-features:
@@ -29,15 +32,14 @@ jobs:
       with:
         toolchain: stable
         default: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-all-features
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.3
     - uses: actions/checkout@v4
     - run: ./rqlite/install.sh
-    - uses: actions-rs/cargo@v1
-      with:
-        command: test-all-features
+    - run: |
+        ./rqlite/test-runner.sh
+        ./test-features.sh
+        ./rqlite/test-runner.sh --stop
 
   test-msrv-all-features:
     runs-on: ubuntu-latest
@@ -57,6 +59,11 @@ jobs:
         toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         components: clippy
         default: true
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.3
     - uses: actions/checkout@v4
     - run: ./rqlite/install.sh
-    - run: ./test-features.sh
+    - run: |
+        ./rqlite/test-runner.sh
+        ./test-features.sh
+        ./rqlite/test-runner.sh --stop
