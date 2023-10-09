@@ -101,15 +101,25 @@ impl TestRqlited {
 
     #[inline]
     fn tearup(&self) {
-        let _ = self.count.fetch_add(1, Ordering::SeqCst);
-        if let Ok(mut rqlited) = self.rqlited.write() {
-            if rqlited.is_none() {
-                *rqlited = Some(Self::start());
-                self.is_started.store(false, Ordering::SeqCst);
-            }
-            if !self.is_started.load(Ordering::Relaxed) {
-                std::thread::sleep(Duration::from_millis(3000));
-                self.is_started.store(true, Ordering::Relaxed);
+        let is_rqlited_start = !["0", "off", "no"].contains(
+            &std::env::var("RQLITED_TESTS_START")
+                .unwrap_or_default()
+                .trim()
+                .to_lowercase()
+                .as_str(),
+        );
+
+        if is_rqlited_start {
+            let _ = self.count.fetch_add(1, Ordering::SeqCst);
+            if let Ok(mut rqlited) = self.rqlited.write() {
+                if rqlited.is_none() {
+                    *rqlited = Some(Self::start());
+                    self.is_started.store(false, Ordering::SeqCst);
+                }
+                if !self.is_started.load(Ordering::Relaxed) {
+                    std::thread::sleep(Duration::from_millis(3000));
+                    self.is_started.store(true, Ordering::Relaxed);
+                }
             }
         }
     }
