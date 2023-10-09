@@ -288,7 +288,6 @@ mod tests {
         });
     }
 
-    #[cfg(feature = "ureq")]
     #[test]
     fn nolevel_request_run_test() {
         TEST_RQLITED_DB.run_test(|| {
@@ -335,6 +334,32 @@ mod tests {
                 "{}",
                 err_msg
             );
+        });
+    }
+
+    #[test]
+    fn query_post_switch_test() {
+        TEST_RQLITED_DB.run_test(|| {
+            let r = TEST_CONNECTION
+                .query()
+                .set_sql_str_slice(&["SELECT COUNT(*) FROM test4zc99f where val = ?", "test"])
+                .request_run();
+
+            assert!(r.is_ok(), "response error: {}", r.err().unwrap());
+
+            let r = response::query::Query::from(r.unwrap());
+            let result = r.results().next().unwrap();
+
+            match result {
+                Mapping::Error(result) => {
+                    assert!(
+                        result.error.contains("no such table: test4zc99f"),
+                        "{}",
+                        result.error
+                    );
+                }
+                _ => unreachable!(),
+            }
         });
     }
 

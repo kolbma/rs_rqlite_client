@@ -250,16 +250,19 @@ where
     pub fn request_run(&self) -> crate::response::Result {
         use crate::request_builder::RequestBuilder;
         match self.endpoint {
-            #[cfg(feature = "monitor")]
-            Endpoint::Query | Endpoint::Monitor(_) => {
-                crate::request::Request::<crate::request::request_type::Get>::new().run(self)
-            }
-            #[cfg(not(feature = "monitor"))]
             Endpoint::Query => {
-                crate::request::Request::<crate::request::request_type::Get>::new().run(self)
+                if self.is_sql_str_query() {
+                    crate::request::Request::<crate::request::request_type::Get>::new().run(self)
+                } else {
+                    crate::request::Request::<crate::request::request_type::Post>::new().run(self)
+                }
             }
             Endpoint::Execute | Endpoint::Request => {
                 crate::request::Request::<crate::request::request_type::Post>::new().run(self)
+            }
+            #[cfg(feature = "monitor")]
+            Endpoint::Monitor(_) => {
+                crate::request::Request::<crate::request::request_type::Get>::new().run(self)
             }
         }
     }
@@ -433,34 +436,24 @@ where
             query.push_str(arg);
         }
 
-        if self.endpoint == Endpoint::Query && self.sql.len() == 1 {
-            if let Some(sql) = self.sql.get(0) {
-                if let Some(json_query) = sql.as_str() {
-                    if query_args.is_empty() {
-                        query.push_str("q=");
-                    } else {
-                        query.push_str("&q=");
-                    }
-
-                    // Need percent_encoding if it is not included in
-                    // using `Url#set_query`/`Url#query`
-                    #[cfg(feature = "percent_encoding")]
-                    #[cfg(not(feature = "url"))]
-                    let json_query = &percent_encoding::utf8_percent_encode(
-                        json_query,
-                        percent_encoding::NON_ALPHANUMERIC,
-                    )
-                    .to_string();
-
-                    log::debug!("q: {json_query}");
-                    tracing::debug!("q: {json_query}");
-
-                    query.push_str(json_query);
-                } else {
-                    log::debug!("q: <None>");
-                    tracing::debug!("q: <None>");
-                }
+        if let Some(sql_str_query) = self.get_sql_str_query() {
+            if query_args.is_empty() {
+                query.push_str("q=");
+            } else {
+                query.push_str("&q=");
             }
+
+            // Need percent_encoding if it is not included in
+            // using `Url#set_query`/`Url#query`
+            #[cfg(feature = "percent_encoding")]
+            #[cfg(not(feature = "url"))]
+            let sql_str_query = &percent_encoding::utf8_percent_encode(
+                sql_str_query,
+                percent_encoding::NON_ALPHANUMERIC,
+            )
+            .to_string();
+
+            query.push_str(sql_str_query);
         }
 
         query
@@ -547,6 +540,28 @@ where
             tracing::trace!("is_transaction: {}", self.is_transaction);
             self.url_modified()
         }
+    }
+
+    #[inline]
+    fn get_sql_str_query(&self) -> Option<&str> {
+        if self.endpoint == Endpoint::Query && self.sql.len() == 1 {
+            if let Some(sql) = self.sql.get(0) {
+                let sql_str_query = sql.as_str();
+                log::debug!("sql_str_query: {sql_str_query:?}");
+                tracing::debug!("sql_str_query: {sql_str_query:?}");
+                return sql_str_query;
+            }
+        }
+
+        log::debug!("sql_str_query: None");
+        tracing::debug!("sql_str_query: None");
+        None
+    }
+
+    /// Checks if `sql` is possible to use in an url query parameter
+    #[inline]
+    pub fn is_sql_str_query(&self) -> bool {
+        self.get_sql_str_query().is_some()
     }
 
     #[inline]
