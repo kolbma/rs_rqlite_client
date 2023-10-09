@@ -18,16 +18,33 @@ lazy_static! {
 
 pub(crate) struct TestRqlited {
     count: AtomicU8,
+    is_rqlited_start: bool,
     is_started: AtomicBool,
     rqlited: RwLock<Option<Child>>,
 }
 
 impl TestRqlited {
     pub(crate) fn new() -> Self {
+        let is_rqlited_start = !["0", "off", "no"].contains(
+            &std::env::var("RQLITED_TESTS_START")
+                .unwrap_or_default()
+                .trim()
+                .to_lowercase()
+                .as_str(),
+        );
+
+        let rqlited = if is_rqlited_start {
+            Some(Self::start())
+        } else {
+            None
+        };
+        let rqlited = RwLock::new(rqlited);
+
         Self {
             count: AtomicU8::default(),
+            is_rqlited_start,
             is_started: AtomicBool::default(),
-            rqlited: RwLock::new(Some(Self::start())),
+            rqlited,
         }
     }
 
@@ -101,15 +118,7 @@ impl TestRqlited {
 
     #[inline]
     fn tearup(&self) {
-        let is_rqlited_start = !["0", "off", "no"].contains(
-            &std::env::var("RQLITED_TESTS_START")
-                .unwrap_or_default()
-                .trim()
-                .to_lowercase()
-                .as_str(),
-        );
-
-        if is_rqlited_start {
+        if self.is_rqlited_start {
             let _ = self.count.fetch_add(1, Ordering::SeqCst);
             if let Ok(mut rqlited) = self.rqlited.write() {
                 if rqlited.is_none() {
