@@ -1,6 +1,6 @@
 [package]
 name = "rqlite_client"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 authors = ["Markus Kolb"]
 description = "rqlite database client with optional extra convenience"
 documentation = "https://docs.rs/rqlite_client/"
@@ -9,7 +9,7 @@ repository = "https://github.com/kolbma/rs_rqlite_client/"
 license = "LGPL-2.1-only"
 edition = "2021"
 rust-version = "1.67.0"
-publish = false
+publish = true
 keywords = ["rqlite", "database", "sql", "migration"]
 categories = ["database"]
 
