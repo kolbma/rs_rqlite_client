@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+
+script=$(basename "$0")
+
+fail() {
+	echo "$script: pre-commit hook failed" >&2
+	exit 1
+}
+
+cargo readme -o README.md && \
+cargo fmt --check && \
+cargo clippy --no-deps -- -Dwarnings && \
+git add README.md || fail
