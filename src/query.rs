@@ -1236,6 +1236,19 @@ mod tests {
     }
 
     #[test]
+    fn basic_auth_test() {
+        let c = Connection::new("http://user:password@example.com");
+        #[cfg(feature = "url")]
+        let c = c.unwrap();
+
+        let url = c.query().create_url();
+        #[cfg(feature = "url")]
+        let url = url.to_string();
+
+        assert_eq!(&url, "http://user:password@example.com/db/query");
+    }
+
+    #[test]
     fn nolevel_test() {
         let q = Query::new(&TEST_CONNECTION);
         assert_eq!(&q.create_path_with_query(), "/db/query");

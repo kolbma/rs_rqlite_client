@@ -309,4 +309,12 @@ mod tests {
         let c = Connection::new("https://example.com");
         assert_eq!(c.scheme(), Scheme::Https);
     }
+
+    #[cfg(feature = "url")]
+    #[test]
+    fn basic_auth_test() {
+        let c = Connection::new("http://user:password@example.com").unwrap();
+        assert_eq!(c.url.username(), "user");
+        assert_eq!(c.url.password(), Some("password"));
+    }
 }
