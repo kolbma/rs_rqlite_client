@@ -42,7 +42,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref LOCK: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+    static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
 #[test]
