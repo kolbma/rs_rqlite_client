@@ -91,7 +91,11 @@ impl From<serde_json::Error> for Error {
 #[cfg(feature = "ureq")]
 impl From<ureq::Error> for Error {
     fn from(value: ureq::Error) -> Self {
-        Self::UreqError(Box::new(value), Box::new(None))
+        if let ureq::Error::Status(status, response) = value {
+            Self::HttpError(status, response.status_text().to_string())
+        } else {
+            Self::UreqError(Box::new(value), Box::new(None))
+        }
     }
 }
 
