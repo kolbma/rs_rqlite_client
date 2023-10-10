@@ -1,1 +1,4 @@
-CREATE TABLE IF NOT EXISTS test (id INTEGER, val TEXT);
+CREATE TABLE IF NOT EXISTS test (\
+    id INTEGER, \
+    val TEXT\
+);

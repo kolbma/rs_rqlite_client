@@ -81,6 +81,10 @@ impl<'a> From<&'a M<'a>> for Mtuple<'a> {
 /// And you can also include these files in your application with the combination of
 /// [`embed_migrations!`](crate::embed_migrations!) and [`Migration::from_embed()`].
 ///
+/// It is allowed to put single-line comments with `#`, `;;`, `//`, `--` at the start of the line
+/// (after whitespaces) in your _SQL_ data.  
+/// It is also possible to insert line-breaks in _SQL_ statements with __`\`__ at the line end.
+///
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Migration<'a, T>
 where
@@ -186,7 +190,6 @@ where
     ///
     /// If there is no `RequestBuilder` provided with [`Migration::set_request_builder`](#method.set_request_builder)
     ///
-    // #[allow(clippy::too_many_lines)]
     pub fn migrate_to(
         &self,
         connection: &Connection,
@@ -222,13 +225,7 @@ where
                 tracing::debug!("db_version: {db_version} migrating: {version}");
 
                 for line in upgrade.lines() {
-                    let line = line.trim();
-                    if let Some(first_char) = &line.chars().next() {
-                        if !['#', ';', '/', '-'].contains(first_char) {
-                            let v = Value::from(line);
-                            query = query.push_sql(v);
-                        }
-                    }
+                    query = query.push_sql(Value::from(line));
                 }
             } else {
                 log::trace!("db_version: {db_version} - already migrated with version {version}");
@@ -370,13 +367,7 @@ where
                     tracing::debug!("db_version: {db_version} rollback: {version}");
 
                     for line in downgrade.lines() {
-                        let line = line.trim();
-                        if let Some(first_char) = &line.chars().next() {
-                            if !['#', ';', '/', '-'].contains(first_char) {
-                                let v = Value::from(line);
-                                query = query.push_sql(v);
-                            }
-                        }
+                        query = query.push_sql(Value::from(line));
                     }
                 }
             } else {
