@@ -16,7 +16,10 @@
 #![forbid(unsafe_code)]
 #![cfg(all(feature = "ureq", feature = "migration"))]
 
-use std::path::Path;
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use lazy_static::lazy_static;
 
@@ -38,8 +41,16 @@ lazy_static! {
     static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
 }
 
+lazy_static! {
+    static ref LOCK: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+}
+
 #[test]
 fn migration_test() {
+    let lock = Arc::clone(&LOCK);
+    let lock = lock.lock();
+    assert!(lock.is_ok());
+
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path);
@@ -56,6 +67,10 @@ fn migration_test() {
 
 #[test]
 fn migration_to_test() {
+    let lock = Arc::clone(&LOCK);
+    let lock = lock.lock();
+    assert!(lock.is_ok());
+
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path);
@@ -85,6 +100,10 @@ fn migration_to_test() {
 
 #[test]
 fn rollback_to_test() {
+    let lock = Arc::clone(&LOCK);
+    let lock = lock.lock();
+    assert!(lock.is_ok());
+
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path);
