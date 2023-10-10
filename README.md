@@ -3,7 +3,7 @@
 ![Maintenance](https://img.shields.io/badge/maintenance-activly--developed-brightgreen.svg)
 [![Rust](https://github.com/kolbma/rs_rqlite_client/actions/workflows/rust.yml/badge.svg)](https://github.com/kolbma/rs_rqlite_client/actions/workflows/rust.yml)
 
-# rqlite_client v0.0.1-alpha.8
+# rqlite_client v0.0.1-alpha.9
 
 
 This is an __rqlite__ database client library with optional extra _convenience_.
@@ -256,8 +256,8 @@ See [`Query`](https://docs.rs/rqlite_client/latest/rqlite_client/struct.Query.ht
 
 ## Current version
 
-[Source https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.8](https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.8)  
-[Download https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.8](https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.8)
+[Source https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.9](https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.9)  
+[Download https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.9](https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.9)
 
 ## License
 
