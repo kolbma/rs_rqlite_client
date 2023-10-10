@@ -494,7 +494,7 @@ where
             })
             .collect::<Vec<(PathBuf, Option<PathBuf>)>>();
 
-        entries.sort();
+        entries.sort_unstable();
 
         Ok(entries)
     }
@@ -682,5 +682,43 @@ where
 {
     fn from(path: P) -> Self {
         Self::new(Self::migrations(path))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::{migration::Migration, response, state, Error, Query, RequestBuilder};
+
+    struct ImplRequestTest {}
+
+    impl<T> RequestBuilder<T> for ImplRequestTest
+    where
+        T: state::State,
+    {
+        fn run(&self, query: &Query<T>) -> response::Result {
+            Err(Error::ResultError(format!(
+                "ImplRequestTest is dummy impl: {query}"
+            )))
+        }
+    }
+
+    #[test]
+    fn sort_migrations_test() {
+        for _ in 0..50 {
+            let v =
+                Migration::<ImplRequestTest>::migration_files(Path::new("tests/test_migrations"))
+                    .unwrap();
+
+            assert!(v[0]
+                .0
+                .to_string_lossy()
+                .starts_with("tests/test_migrations/01_test_table_create/"));
+            assert!(v[2]
+                .0
+                .to_string_lossy()
+                .starts_with("tests/test_migrations/03_system_table_create/"));
+        }
     }
 }
