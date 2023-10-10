@@ -158,7 +158,7 @@ fn queue_write_wait_timeout_test() {
             let mut q = TEST_CONNECTION
                 .execute_queue()
                 .set_wait()
-                .set_timeout(Duration::from_millis(10).into())
+                .set_timeout(Duration::from_millis(1).into())
                 .push_sql_str("DROP TABLE IF EXISTS temp.queue_write_wait_test")
                 .push_sql_str("CREATE TEMP TABLE IF NOT EXISTS queue_write_wait_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT)");
 
