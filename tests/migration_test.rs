@@ -48,8 +48,8 @@ lazy_static! {
 #[test]
 fn migration_test() {
     let lock = Arc::clone(&LOCK);
-    let lock = lock.lock();
-    assert!(lock.is_ok());
+    #[allow(clippy::let_unit_value)]
+    let _locked = *lock.lock().unwrap();
 
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
@@ -68,8 +68,8 @@ fn migration_test() {
 #[test]
 fn migration_to_test() {
     let lock = Arc::clone(&LOCK);
-    let lock = lock.lock();
-    assert!(lock.is_ok());
+    #[allow(clippy::let_unit_value)]
+    let _locked = *lock.lock().unwrap();
 
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
@@ -101,8 +101,8 @@ fn migration_to_test() {
 #[test]
 fn rollback_to_test() {
     let lock = Arc::clone(&LOCK);
-    let lock = lock.lock();
-    assert!(lock.is_ok());
+    #[allow(clippy::let_unit_value)]
+    let _locked = *lock.lock().unwrap();
 
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let path = Path::new("./tests/test_migrations");
