@@ -20,7 +20,7 @@ use std::time::Duration;
 
 use lazy_static::lazy_static;
 
-use rqlite_client::{response::mapping::Mapping, Connection, DataType, Response, Value};
+use rqlite_client::{response::mapping::Mapping, Connection, DataType, Error, Response, Value};
 
 mod test_rqlited;
 
@@ -44,7 +44,10 @@ fn queue_write_test() {
             .push_sql_str("CREATE TEMP TABLE IF NOT EXISTS queue_write_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT)");
 
         for i in 0..100 {
-            q = q.push_sql_str_slice(&["INSERT INTO temp.queue_write_test (name) VALUES (?)", &i.to_string()]);
+            q = q.push_sql_str_slice(&[
+                "INSERT INTO temp.queue_write_test (name) VALUES (?)",
+                &i.to_string(),
+            ]);
         }
 
         let r = q.request_run();
@@ -54,7 +57,8 @@ fn queue_write_test() {
         let r = r.unwrap();
         // irrefutable_let_patterns: with no monitor feature
         #[allow(irrefutable_let_patterns)]
-        let Response::Query(r) = r else {
+        let Response::Query(r) = r
+        else {
             unreachable!()
         };
         assert!(r.sequence_number().is_some(), "{r:?}");
@@ -72,13 +76,19 @@ fn queue_write_test() {
         let r = r.unwrap();
         // irrefutable_let_patterns: with no monitor feature
         #[allow(irrefutable_let_patterns)]
-        let Response::Query(r) = r else {
+        let Response::Query(r) = r
+        else {
             unreachable!()
         };
 
         if let Some(Mapping::Standard(standard)) = r.results().next() {
             assert_eq!(standard.types[0], DataType::Integer);
-            assert_eq!(standard.value(0, 0).and_then(Value::as_u64).unwrap(), 100_u64, "{:?}", standard.values(0));
+            assert_eq!(
+                standard.value(0, 0).and_then(Value::as_u64).unwrap(),
+                100_u64,
+                "{:?}",
+                standard.values(0)
+            );
         }
     });
 }
@@ -89,12 +99,15 @@ fn queue_write_wait_test() {
         let mut q = TEST_CONNECTION
             .execute_queue()
             .set_wait()
-            .set_timeout(Duration::from_millis(250).into())
+            .set_timeout(Duration::from_millis(1000).into())
             .push_sql_str("DROP TABLE IF EXISTS temp.queue_write_wait_test")
             .push_sql_str("CREATE TEMP TABLE IF NOT EXISTS queue_write_wait_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT)");
 
         for i in 0..100 {
-            q = q.push_sql_str_slice(&["INSERT INTO temp.queue_write_wait_test (name) VALUES (?)", &i.to_string()]);
+            q = q.push_sql_str_slice(&[
+                "INSERT INTO temp.queue_write_wait_test (name) VALUES (?)",
+                &i.to_string(),
+            ]);
         }
 
         let r = q.request_run();
@@ -104,7 +117,8 @@ fn queue_write_wait_test() {
         let r = r.unwrap();
         // irrefutable_let_patterns: with no monitor feature
         #[allow(irrefutable_let_patterns)]
-        let Response::Query(r) = r else {
+        let Response::Query(r) = r
+        else {
             unreachable!()
         };
         assert!(r.sequence_number().is_some(), "{r:?}");
@@ -120,13 +134,48 @@ fn queue_write_wait_test() {
         let r = r.unwrap();
         // irrefutable_let_patterns: with no monitor feature
         #[allow(irrefutable_let_patterns)]
-        let Response::Query(r) = r else {
+        let Response::Query(r) = r
+        else {
             unreachable!()
         };
 
         if let Some(Mapping::Standard(standard)) = r.results().next() {
             assert_eq!(standard.types[0], DataType::Integer);
-            assert_eq!(standard.value(0, 0).and_then(Value::as_u64).unwrap(), 100_u64, "{:?}", standard.values(0));
+            assert_eq!(
+                standard.value(0, 0).and_then(Value::as_u64).unwrap(),
+                100_u64,
+                "{:?}",
+                standard.values(0)
+            );
+        }
+    });
+}
+
+#[test]
+fn queue_write_wait_timeout_test() {
+    test_rqlited::TEST_RQLITED_DB.run_test(|| {
+        for _ in 0..20 {
+            let mut q = TEST_CONNECTION
+                .execute_queue()
+                .set_wait()
+                .set_timeout(Duration::from_millis(10).into())
+                .push_sql_str("DROP TABLE IF EXISTS temp.queue_write_wait_test")
+                .push_sql_str("CREATE TEMP TABLE IF NOT EXISTS queue_write_wait_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT)");
+
+            for i in 0..100 {
+                q = q.push_sql_str_slice(&[
+                    "INSERT INTO temp.queue_write_wait_test (name) VALUES (?)",
+                    &i.to_string(),
+                ]);
+            }
+
+            let r = q.request_run();
+
+            if let Err(Error::HttpError(status, _)) = r {
+                assert_eq!(status, 408);
+            } else {
+                unreachable!("{r:?}");
+            }
         }
     });
 }
