@@ -39,7 +39,7 @@ lazy_static! {
 fn delete_table_test_test() {
     test_rqlited::TEST_RQLITED_DB.run_test(|| {
         let r = Request::<Post>::new().run(&TEST_CONNECTION.execute().push_sql_str(
-            "CREATE TABLE test (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
+            "CREATE TABLE delete_table_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
         ));
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
@@ -57,7 +57,7 @@ fn delete_table_test_test() {
             mapping::Mapping::Error(err) => assert_eq!(
                 err,
                 &mapping::Error {
-                    error: "table test already exists".to_string()
+                    error: "table delete_table_test already exists".to_string()
                 }
             ),
             mapping::Mapping::Empty(result) => assert_eq!(result, &mapping::Empty::default()),
@@ -65,7 +65,7 @@ fn delete_table_test_test() {
         }
 
         let r =
-            Request::<Post>::new().run(&TEST_CONNECTION.execute().push_sql_str("DROP TABLE test"));
+            Request::<Post>::new().run(&TEST_CONNECTION.execute().push_sql_str("DROP TABLE delete_table_test"));
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
 
