@@ -204,46 +204,6 @@ where
             .as_ref()
             .expect("no request_builder checked and found");
 
-        // // Retrieve user_version from DB
-        // let query = connection.query().push_sql_str("PRAGMA user_version");
-
-        // let Response::Query(r) = rb
-        //     .run(&query)
-        //     .map_err(|err| MigrationError::try_from(err).unwrap_err())?
-        // else {
-        //     return Err(MigrationError::Internal("sql_response required"));
-        // };
-
-        // let mut db_version = None;
-        // for (index, result) in r.results().enumerate() {
-        //     match result {
-        //         Mapping::Error(err) => {
-        //             return Err(MigrationError::QueryFail(format!(
-        //                 "{} - {}",
-        //                 err.error,
-        //                 query.sql()[index]
-        //             )));
-        //         }
-        //         Mapping::Standard(standard) => {
-        //             db_version = standard
-        //                 .values
-        //                 .get(0)
-        //                 .ok_or(MigrationError::QueryFail("no result".to_string()))?
-        //                 .get(0)
-        //                 .ok_or(MigrationError::QueryFail("no result".to_string()))?
-        //                 .as_u64()
-        //                 .map(SchemaVersion);
-        //         }
-        //         _ => return Err(MigrationError::QueryFail("result not handled".to_string())),
-        //     }
-        //     if db_version.is_some() {
-        //         break;
-        //     }
-        // }
-
-        // let db_version =
-        //     db_version.ok_or(MigrationError::QueryFail("no schema version".to_string()))?;
-
         let db_version = Self::pragma_user_version(connection, rb)?;
 
         // migrate from db_version onwards
@@ -293,27 +253,6 @@ where
 
         // at the end set new user_version
         Self::run_n_set_pragma_user_version(rb, query, version)?;
-        // if version != db_version {
-        //     query = query.push_sql_str(&format!("PRAGMA user_version={version}"));
-
-        //     let Response::Query(r) = rb
-        //         .run(&query)
-        //         .map_err(|err| MigrationError::try_from(err).unwrap_err())?
-        //     else {
-        //         return Err(MigrationError::Internal("sql_response required"));
-        //     };
-
-        //     // check for error fields
-        //     for (index, result) in r.results().enumerate() {
-        //         if let Mapping::Error(err) = result {
-        //             return Err(MigrationError::QueryFail(format!(
-        //                 "{} - {}",
-        //                 err.error,
-        //                 query.sql()[index]
-        //             )));
-        //         }
-        //     }
-        // }
 
         log::info!("migrated to version {version}");
         tracing::info!("migrated to version {version}");
@@ -356,12 +295,8 @@ where
                 }
                 Mapping::Standard(standard) => {
                     db_version = standard
-                        .values
-                        .get(0)
-                        .ok_or(MigrationError::QueryFail("no result".to_string()))?
-                        .get(0)
-                        .ok_or(MigrationError::QueryFail("no result".to_string()))?
-                        .as_u64()
+                        .value(0, 0)
+                        .and_then(Value::as_u64)
                         .map(SchemaVersion);
                 }
                 _ => return Err(MigrationError::QueryFail("result not handled".to_string())),
@@ -413,46 +348,6 @@ where
             .as_ref()
             .expect("request_builder checked and found");
 
-        // // Retrieve user_version from DB
-        // let query = connection.query().push_sql_str("PRAGMA user_version");
-
-        // let r = rb
-        //     .run(&query)
-        //     .map_err(|err| MigrationError::try_from(err).unwrap_err())?;
-        // let Response::Query(r) = r else {
-        //     return Err(MigrationError::Internal("sql_response required"));
-        // };
-
-        // let mut db_version = None;
-        // for (index, result) in r.results().enumerate() {
-        //     match result {
-        //         Mapping::Error(err) => {
-        //             return Err(MigrationError::QueryFail(format!(
-        //                 "{} - {}",
-        //                 err.error,
-        //                 query.sql()[index]
-        //             )));
-        //         }
-        //         Mapping::Standard(standard) => {
-        //             db_version = standard
-        //                 .values
-        //                 .get(0)
-        //                 .ok_or(MigrationError::QueryFail("no result".to_string()))?
-        //                 .get(0)
-        //                 .ok_or(MigrationError::QueryFail("no result".to_string()))?
-        //                 .as_u64()
-        //                 .map(SchemaVersion);
-        //         }
-        //         _ => return Err(MigrationError::QueryFail("result not handled".to_string())),
-        //     }
-        //     if db_version.is_some() {
-        //         break;
-        //     }
-        // }
-
-        // let db_version =
-        //     db_version.ok_or(MigrationError::QueryFail("no schema version".to_string()))?;
-
         let db_version = Self::pragma_user_version(connection, rb)?;
 
         if *to_version >= db_version {
@@ -496,25 +391,6 @@ where
 
         // at the end set new user_version
         Self::run_n_set_pragma_user_version(rb, query, version)?;
-        // query = query.push_sql_str(&format!("PRAGMA user_version={version}"));
-
-        // let r = rb
-        //     .run(&query)
-        //     .map_err(|err| MigrationError::try_from(err).unwrap_err())?;
-        // let Response::Query(r) = r else {
-        //     return Err(MigrationError::Internal("sql_response required"));
-        // };
-
-        // // check for error fields
-        // for (index, result) in r.results().enumerate() {
-        //     if let Mapping::Error(err) = result {
-        //         return Err(MigrationError::QueryFail(format!(
-        //             "{} - {}",
-        //             err.error,
-        //             query.sql()[index]
-        //         )));
-        //     }
-        // }
 
         log::info!("rollback to version {version}");
         tracing::info!("rollback to version {version}");
