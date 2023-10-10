@@ -112,7 +112,7 @@ mod tests {
                 time: None,
                 types: Vec::new(),
                 columns: Vec::new(),
-                values: Vec::new(),
+                values: None,
             })],
             sequence_number: None,
             time: None,
@@ -123,17 +123,14 @@ mod tests {
         assert!(res.is_ok(), "error: {}", res.err().unwrap());
         let json = res.unwrap();
         assert!(json.contains("\"results\": ["));
-        assert_eq!(json, "{\n  \"results\": [\n    {\n      \"columns\": [],\n      \"types\": [],\n      \"values\": []\n    }\n  ]\n}");
+        assert_eq!(json, "{\n  \"results\": [\n    {\n      \"columns\": [],\n      \"types\": []\n    }\n  ]\n}");
 
         let res = serde_json::to_string(&r);
 
         assert!(res.is_ok(), "error: {}", res.err().unwrap());
         let json = res.unwrap();
         assert!(json.contains("\"results\":["));
-        assert_eq!(
-            json,
-            "{\"results\":[{\"columns\":[],\"types\":[],\"values\":[]}]}"
-        );
+        assert_eq!(json, "{\"results\":[{\"columns\":[],\"types\":[]}]}");
     }
 
     #[test]
@@ -143,7 +140,7 @@ mod tests {
                 time: None,
                 types: vec![DataType::Integer, DataType::Text],
                 columns: vec!["id".to_string(), "value".to_string()],
-                values: vec![vec![1.into(), "test".into()]],
+                values: Some(vec![vec![1.into(), "test".into()]]),
             })],
             sequence_number: None,
             time: None,

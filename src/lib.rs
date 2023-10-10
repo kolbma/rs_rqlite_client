@@ -201,8 +201,9 @@ if let Ok(response) = result {
     if let Some(Mapping::Standard(success)) = response.results().next() {
         let row = 0;
         let col = 0;
-        let rows_found = &success.values[row][col];
-        println!("tbl has {rows_found} row(s)");
+        if let Some(rows_found) = &success.value(row, col) {
+            println!("tbl has {rows_found} row(s)");
+        }
     }
 }
 # }

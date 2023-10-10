@@ -279,7 +279,7 @@ mod tests {
                             columns: vec!["1".to_string()],
                             time: None,
                             types: vec![DataType::Integer],
-                            values: vec![vec![1.into()]]
+                            values: Some(vec![vec![1.into()]])
                         }
                     );
                 }
@@ -309,7 +309,7 @@ mod tests {
                             columns: vec!["1".to_string()],
                             time: None,
                             types: vec![DataType::Integer],
-                            values: vec![vec![1.into()]]
+                            values: Some(vec![vec![1.into()]])
                         }
                     );
                 }
@@ -429,7 +429,7 @@ mod tests {
                             columns: vec!["1".to_string()],
                             time: None,
                             types: vec![DataType::Integer],
-                            values: vec![vec![1.into()]]
+                            values: Some(vec![vec![1.into()]])
                         }
                     );
                 }
@@ -446,13 +446,13 @@ mod tests {
                             columns: vec!["date()".to_string()],
                             time: None,
                             types: vec![DataType::Text],
-                            values: vec![vec![time::OffsetDateTime::now_utc()
+                            values: Some(vec![vec![time::OffsetDateTime::now_utc()
                                 .format(
                                     &time::format_description::parse("[year]-[month]-[day]")
                                         .unwrap()
                                 )
                                 .unwrap()
-                                .into()]]
+                                .into()]])
                         }
                     );
                 }

@@ -20,7 +20,7 @@ use std::time::Duration;
 
 use lazy_static::lazy_static;
 
-use rqlite_client::{response::mapping::Mapping, Connection, DataType, Response};
+use rqlite_client::{response::mapping::Mapping, Connection, DataType, Response, Value};
 
 mod test_rqlited;
 
@@ -78,7 +78,7 @@ fn queue_write_test() {
 
         if let Some(Mapping::Standard(standard)) = r.results().next() {
             assert_eq!(standard.types[0], DataType::Integer);
-            assert_eq!(standard.values[0][0].as_u64().unwrap(), 100_u64, "{:?}", standard.values[0]);
+            assert_eq!(standard.value(0, 0).and_then(Value::as_u64).unwrap(), 100_u64, "{:?}", standard.values(0));
         }
     });
 }
@@ -126,7 +126,7 @@ fn queue_write_wait_test() {
 
         if let Some(Mapping::Standard(standard)) = r.results().next() {
             assert_eq!(standard.types[0], DataType::Integer);
-            assert_eq!(standard.values[0][0].as_u64().unwrap(), 100_u64, "{:?}", standard.values[0]);
+            assert_eq!(standard.value(0, 0).and_then(Value::as_u64).unwrap(), 100_u64, "{:?}", standard.values(0));
         }
     });
 }
