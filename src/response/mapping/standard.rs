@@ -40,13 +40,14 @@ use super::timed::Timed;
 pub struct Standard {
     /// query columns
     pub columns: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     /// time needed for query if requested
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub time: Option<f64>,
     /// `DataType` of `columns`
     pub types: Vec<DataType>,
     /// data sets with values per `columns`
-    pub values: Vec<Vec<Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub values: Option<Vec<Vec<Value>>>,
 }
 
 impl Timed for Standard {
@@ -56,6 +57,12 @@ impl Timed for Standard {
 }
 
 impl Standard {
+    /// Get name of column at `index`
+    #[must_use]
+    pub fn column(&self, index: usize) -> Option<&String> {
+        self.columns.get(index)
+    }
+
     /// Create empty `Standard`
     #[must_use]
     pub fn new() -> Self {
@@ -76,10 +83,11 @@ impl Standard {
         self
     }
 
-    /// Append single value `v` in `values` vec at `value_index`
+    /// Append single value `v` in `values` vec at row `row_index`
     #[must_use]
-    pub fn push_value(mut self, v: Value, value_index: usize) -> Self {
-        if let Some(values) = self.values.get_mut(value_index) {
+    pub fn push_value(mut self, v: Value, row_index: usize) -> Self {
+        let values = self.values.get_or_insert(Vec::new());
+        if let Some(values) = values.get_mut(row_index) {
             values.push(v);
         }
         self
@@ -88,7 +96,33 @@ impl Standard {
     /// Append vec `v` to `values`
     #[must_use]
     pub fn push_values(mut self, v: Vec<Value>) -> Self {
-        self.values.push(v);
+        self.values.get_or_insert(Vec::new()).push(v);
         self
+    }
+
+    /// Get [`DataType`] for column `index`
+    #[must_use]
+    pub fn data_type(&self, index: usize) -> Option<DataType> {
+        self.types.get(index).copied()
+    }
+
+    /// Get value of row `row_index` and column `column_index`
+    #[must_use]
+    pub fn value(&self, row_index: usize, column_index: usize) -> Option<&Value> {
+        if let Some(values) = &self.values {
+            if let Some(row) = values.get(row_index) {
+                return row.get(column_index);
+            }
+        }
+        None
+    }
+
+    /// Get values of row `row_index`
+    #[must_use]
+    pub fn values(&self, row_index: usize) -> Option<&Vec<Value>> {
+        if let Some(values) = &self.values {
+            return values.get(row_index);
+        }
+        None
     }
 }
