@@ -26,13 +26,16 @@ install_dir="$script_dir/$arch"
 }
 
 
+db_data_dir_base="$script_dir/../target/rqlite_data_"
+db_data_dir="${db_data_dir_base}${RANDOM}${RANDOM}"
+
 rqlited_pid() {
     pid=""
-    lsof -n -t -w -- "$db_data_dir/raft.db" >/dev/null 2>&1
+    lsof -n -t -w -- "$db_data_dir_base"*/raft.db >/dev/null 2>&1
     if [ "$?" -eq 0 ] ; then
-        pid=$(lsof -n -t -w -- "$db_data_dir/raft.db" 2>/dev/null)
+        pid=$(lsof -n -t -w -- "$db_data_dir_base"*/raft.db 2>/dev/null)
     else
-        pid=$(ps -e | grep rqlited | cut -d' ' -f1)
+        pid=$(ps -e | sed -e '/rqlited/!d' -e 's/^[ ]*\([0-9]*\)[^0-9]*.*$/\1/')
     fi
     
     [ -n "$pid" ] && echo "$pid" || {
@@ -71,8 +74,6 @@ if [ "X$1" = "X--stop" ] ; then
     exit 0
 fi
 
-
-db_data_dir="$script_dir/../target/rqlite_data_$RANDOM$RANDOM"
 
 [ -d "$db_data_dir" ] || {
     mkdir -p "$db_data_dir" || {
