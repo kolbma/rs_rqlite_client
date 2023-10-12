@@ -14,37 +14,23 @@
     unused_results
 )]
 #![forbid(unsafe_code)]
-#![cfg(all(feature = "ureq", feature = "migration_embed"))]
+#![cfg(all(feature = "migration_embed", feature = "ureq"))]
 
-use lazy_static::lazy_static;
+use rqlite_client::{embed_migrations, migration::Migration};
+use test_rqlited::TEST_RQLITED_DB;
 
-use rqlite_client::{embed_migrations, migration::Migration, Connection};
-
-mod test_rqlited;
-
-const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
-
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-}
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
-}
-
-embed_migrations!(pub(crate) MigrationEmbed("tests/test_embed_migrations"));
+embed_migrations!(pub(crate) MigrationEmbed("tests/test_migrations"));
 
 #[test]
 fn migration_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let x = MigrationEmbed::get("01_test_embed_table_create/upgrade.sql");
+    TEST_RQLITED_DB.run_test(|c| {
+        let x = MigrationEmbed::get("04_test_embed_table_create/upgrade.sql");
         assert!(x.is_some());
 
         let m = Migration::from_embed::<MigrationEmbed>();
         let version = m
-            .migrate(&TEST_CONNECTION)
+            .migrate(&c)
             .unwrap_or_else(|err| unreachable!("err: {:?}", err));
-        assert_eq!(u64::from(&version), 2_u64);
+        assert_eq!(version, m.max());
     });
 }

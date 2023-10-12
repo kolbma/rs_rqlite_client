@@ -278,7 +278,8 @@ use lazy_static as _;
 #[cfg(feature = "percent_encoding")]
 use percent_encoding as _;
 #[cfg(test)]
-#[cfg(not(feature = "ureq"))]
+use test_rqlited as _;
+#[cfg(test)]
 use time as _;
 
 pub use buildtime::BUILD_TIME;
@@ -307,9 +308,4 @@ mod query;
 mod request;
 mod request_builder;
 pub mod response;
-#[cfg(test)]
-mod test_rqlited;
 pub(crate) mod tracing;
-
-#[cfg(test)]
-mod tests {}

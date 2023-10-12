@@ -14,30 +14,15 @@
     unused_results
 )]
 #![forbid(unsafe_code)]
-#![cfg(feature = "monitor")]
-#![cfg(feature = "ureq")]
+#![cfg(all(feature = "monitor", feature = "ureq"))]
 
-use lazy_static::lazy_static;
-
-use rqlite_client::{monitor::response, Connection};
-
-mod test_rqlited;
-
-const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
-
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-}
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
-}
+use rqlite_client::monitor::response;
+use test_rqlited::{TEST_RQLITED_DB, TEST_RQLITED_DB_URL};
 
 #[test]
 fn monitor_nodes_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let q = TEST_CONNECTION.monitor().nodes();
+    TEST_RQLITED_DB.run_test(|c| {
+        let q = c.monitor().nodes();
 
         let r = q.request_run();
 
@@ -46,6 +31,6 @@ fn monitor_nodes_test() {
         let node = nodes.get("localhost:4002").unwrap();
         assert!(node.leader);
         assert!(node.reachable);
-        assert_eq!(node.api_addr, "http://localhost:4001");
+        assert_eq!(node.api_addr, TEST_RQLITED_DB_URL);
     });
 }

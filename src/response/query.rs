@@ -23,6 +23,8 @@ pub struct Query {
     /// if requested timing information
     #[serde(skip_serializing_if = "Option::is_none")]
     time: Option<f64>,
+    #[serde(skip)]
+    iter: Option<Vec<Mapping>>,
 }
 
 impl Query {
@@ -30,6 +32,11 @@ impl Query {
     #[must_use]
     pub fn duration(&self) -> Option<Duration> {
         self.time.map(Duration::from_secs_f64)
+    }
+
+    /// Iterator for available [`Result`]s
+    pub fn iter(&self) -> std::slice::Iter<'_, Mapping> {
+        self.results.iter()
     }
 
     /// Iterator for available [`Result`]s
@@ -49,6 +56,22 @@ impl Query {
     #[inline]
     pub fn time(&self) -> Option<f64> {
         self.time
+    }
+}
+
+impl Iterator for Query {
+    type Item = Mapping;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.iter.is_none() {
+            self.iter = Some(self.results.clone());
+        }
+        let results = &mut self.results;
+        if results.is_empty() {
+            None
+        } else {
+            Some(results.remove(0))
+        }
     }
 }
 
@@ -85,6 +108,7 @@ mod tests {
             })],
             sequence_number: None,
             time: None,
+            iter: None,
         };
 
         let res = serde_json::to_string_pretty(&r);
@@ -116,6 +140,7 @@ mod tests {
             })],
             sequence_number: None,
             time: None,
+            iter: None,
         };
 
         let res = serde_json::to_string_pretty(&r);
@@ -144,6 +169,7 @@ mod tests {
             })],
             sequence_number: None,
             time: None,
+            iter: None,
         };
 
         let res = serde_json::to_string(&r);
@@ -161,6 +187,24 @@ mod tests {
     fn deserialize_associative_test() {
         let json =
             "{\n  \"results\": [\n    {\n      \"rows\": [],\n      \"types\": {}\n    }\n  ]\n}";
+
+        let res: Result<Query, serde_json::Error> = serde_json::from_str(json);
+
+        assert!(res.is_ok(), "error: {}", res.err().unwrap());
+        let r = res.unwrap();
+        assert_eq!(r.results.len(), 1);
+        match &r.results[0] {
+            Mapping::Associative(_) => {}
+            _ => unreachable!(),
+        }
+
+        // with numeric
+        let json = r#"{"results":[{"types":{"account_id":"integer","accountname":"text","confirm_at":"numeric",
+            "created_at":"numeric","email":"text","pwhash":"text","updated_at":"numeric"},
+            "rows":[{"account_id":1,"accountname":"Max Mustermann","confirm_at":null,"created_at":1697087224,
+            "email":"J7MtuhBnoVSzH2OWntrYyOtgVKhImly3ZKDjH7NFdjM=",
+            "pwhash":"$argon2id$v=19$m=19456,t=2,p=1$3Mfjr2P+3SNYt93OutkSPA$O+V41bBVZdx8VN8mumVuHEADRIpP5bkBiKQxM5Eun4E",
+            "updated_at":1697087224}]}]}"#;
 
         let res: Result<Query, serde_json::Error> = serde_json::from_str(json);
 

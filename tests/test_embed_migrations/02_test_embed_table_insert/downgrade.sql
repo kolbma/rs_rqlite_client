@@ -1,1 +1,0 @@
--- DELETE FROM test_embed WHERE id = 1 AND val = "testval";

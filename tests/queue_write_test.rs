@@ -18,27 +18,13 @@
 
 use std::time::Duration;
 
-use lazy_static::lazy_static;
-
-use rqlite_client::{response::mapping::Mapping, Connection, DataType, Error, Response, Value};
-
-mod test_rqlited;
-
-const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
-
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-}
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
-}
+use rqlite_client::{response::mapping::Mapping, DataType, Error, Response, Value};
+use test_rqlited::TEST_RQLITED_DB;
 
 #[test]
 fn queue_write_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let mut q = TEST_CONNECTION
+    TEST_RQLITED_DB.run_test(|c| {
+        let mut q = c
             .execute_queue()
             .push_sql_str("DROP TABLE IF EXISTS temp.queue_write_test")
             .push_sql_str("CREATE TEMP TABLE IF NOT EXISTS queue_write_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT)");
@@ -66,7 +52,7 @@ fn queue_write_test() {
 
         std::thread::sleep(Duration::from_millis(500));
 
-        let r = TEST_CONNECTION
+        let r = c
             .query()
             .set_sql_str("SELECT COUNT(*) FROM temp.queue_write_test")
             .request_run();
@@ -95,8 +81,8 @@ fn queue_write_test() {
 
 #[test]
 fn queue_write_wait_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let mut q = TEST_CONNECTION
+    TEST_RQLITED_DB.run_test(|c| {
+        let mut q = c
             .execute_queue()
             .set_wait()
             .set_timeout(Duration::from_millis(1000).into())
@@ -124,7 +110,7 @@ fn queue_write_wait_test() {
         assert!(r.sequence_number().is_some(), "{r:?}");
         assert!(r.results().next().is_none());
 
-        let r = TEST_CONNECTION
+        let r = c
             .query()
             .set_sql_str("SELECT COUNT(*) FROM temp.queue_write_wait_test")
             .request_run();
@@ -153,9 +139,9 @@ fn queue_write_wait_test() {
 
 #[test]
 fn queue_write_wait_timeout_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
+    TEST_RQLITED_DB.run_test(|c| {
         for _ in 0..20 {
-            let mut q = TEST_CONNECTION
+            let mut q = c
                 .execute_queue()
                 .set_wait()
                 .set_timeout(Duration::from_millis(1).into())

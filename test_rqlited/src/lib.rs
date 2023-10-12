@@ -1,22 +1,56 @@
-/// `test_rqlited`
+//! `test_rqlited`
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_panics_doc)]
+#![warn(
+    // missing_debug_implementations,
+    // missing_docs,
+    non_ascii_idents,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unsafe_code,
+    // unused_crate_dependencies,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results
+)]
+#![forbid(unsafe_code)]
+
 use std::{
+    env,
     fs::OpenOptions,
     io::Write,
     process::{Child, Command},
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
-        RwLock,
+        Arc, Mutex, RwLock,
     },
     time::Duration,
 };
 
 use lazy_static::lazy_static;
+use rqlite_client::{Connection, Response};
 
 lazy_static! {
-    pub(crate) static ref TEST_RQLITED_DB: TestRqlited = TestRqlited::new();
+    pub static ref TEST_RQLITED_DB: TestRqlited = TestRqlited::new();
+    pub static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
-pub(crate) struct TestRqlited {
+pub const TEST_RQLITED_DB_URL: &str = "http://localhost:4001";
+
+#[macro_export]
+macro_rules! lock {
+    ( $c:block ) => {{
+        if let Ok(_locked) = $crate::LOCK.lock() {
+            $c
+        } else {
+            unreachable!("lock failed");
+        }
+    }};
+}
+
+pub struct TestRqlited {
     count: AtomicU8,
     is_rqlited_start: bool,
     is_started: AtomicBool,
@@ -24,7 +58,8 @@ pub(crate) struct TestRqlited {
 }
 
 impl TestRqlited {
-    pub(crate) fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         let is_rqlited_start = !["0", "off", "no"].contains(
             &std::env::var("RQLITED_TESTS_START")
                 .unwrap_or_default()
@@ -32,6 +67,22 @@ impl TestRqlited {
                 .to_lowercase()
                 .as_str(),
         );
+
+        let is_rqlited_start = if is_rqlited_start {
+            let c = Connection::new(TEST_RQLITED_DB_URL).unwrap();
+            if let Ok(Response::Readyz(r)) = c
+                .monitor()
+                .readyz()
+                .set_timeout_request(Duration::from_secs(3))
+                .request_run()
+            {
+                !(r.is_leader_ok && r.is_node_ok && r.is_store_ok)
+            } else {
+                true
+            }
+        } else {
+            false
+        };
 
         let rqlited = if is_rqlited_start {
             Some(Self::start())
@@ -48,13 +99,17 @@ impl TestRqlited {
         }
     }
 
-    pub(crate) fn run_test<T>(&self, test: T)
+    pub fn run_test<T>(&self, test: T)
     where
-        T: FnOnce() + std::panic::UnwindSafe,
+        T: FnOnce(Connection) + std::panic::UnwindSafe,
     {
         self.tearup();
 
-        let result = std::panic::catch_unwind(test);
+        let c = Connection::new(TEST_RQLITED_DB_URL);
+        #[cfg(feature = "url")]
+        let c = c.unwrap();
+
+        let result = std::panic::catch_unwind(|| test(c));
 
         self.teardown();
 
@@ -62,7 +117,7 @@ impl TestRqlited {
     }
 
     fn start() -> Child {
-        let data_dir = env!("OUT_DIR").to_string() + "/rqlite_data";
+        let data_dir = env::var("OUT_DIR").unwrap().to_string() + "/rqlite_data";
 
         let is_redirect_output = !["0", "off", "no"].contains(
             &std::env::var("RQLITED_REDIRECT_OUTPUT")
@@ -73,7 +128,7 @@ impl TestRqlited {
         );
 
         if is_redirect_output {
-            let stdout_file = env!("OUT_DIR").to_string() + "/rqlited_stdout.log";
+            let stdout_file = env::var("OUT_DIR").unwrap().to_string() + "/rqlited_stdout.log";
             let stdout = OpenOptions::new()
                 .append(true)
                 .create(true)
@@ -81,7 +136,7 @@ impl TestRqlited {
                 .unwrap();
             let _ = writeln!(std::io::stdout(), "rqlited stdout: {stdout_file}");
 
-            let stderr_file = env!("OUT_DIR").to_string() + "/rqlited_stderr.log";
+            let stderr_file = env::var("OUT_DIR").unwrap().to_string() + "/rqlited_stderr.log";
             let stderr = OpenOptions::new()
                 .append(true)
                 .create(true)

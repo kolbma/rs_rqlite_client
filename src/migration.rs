@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 pub use downgrade::Downgrade;
 #[allow(clippy::module_name_repetitions)]
 pub use error::Error as MigrationError;
-pub use schema_version::SchemaVersion;
+pub use schema_version::{SchemaVersion, MAX as SCHEMA_VERSION_MAX};
 pub(crate) use sql::Sql;
 pub use upgrade::Upgrade;
 
@@ -157,6 +157,12 @@ where
         }
     }
 
+    /// Maximum of available [`SchemaVersion`]
+    ///
+    pub fn max(&self) -> SchemaVersion {
+        self.migrations.len().into()
+    }
+
     /// Migrate provided `Migration`
     ///
     /// # Return
@@ -215,7 +221,7 @@ where
         let mut version = SchemaVersion::default();
 
         for (upgrade, _) in self.migrations.iter().map(Mtuple::from) {
-            if let Some(to_version) = to_version.filter(|v| &version > *v) {
+            if let Some(to_version) = to_version.filter(|v| &version >= *v) {
                 let _ = to_version;
                 log::trace!("db_version: {db_version} - migrated to version {to_version}");
                 tracing::trace!("db_version: {db_version} - migrated to version {to_version}");
@@ -237,7 +243,6 @@ where
         }
 
         if let Some(to_version) = to_version {
-            version = version.checked_sub(1).unwrap_or_default();
             if version != *to_version {
                 return Err(MigrationError::DataMalformat(format!(
                     "no migration {to_version}"
@@ -359,8 +364,8 @@ where
         let mut version = db_version;
 
         for (_, downgrade) in self.migrations.iter().rev().map(Mtuple::from) {
-            if let Some(downgrade) = downgrade {
-                if version > *to_version {
+            if version > *to_version {
+                if let Some(downgrade) = downgrade {
                     version = version.checked_sub(1).unwrap_or_default();
 
                     log::debug!("db_version: {db_version} rollback: {version}");
@@ -369,14 +374,16 @@ where
                     for line in downgrade.lines() {
                         query = query.push_sql(Value::from(line));
                     }
+                } else {
+                    version = version.checked_sub(1).unwrap_or_default();
+
+                    log::debug!("db_version: {db_version} rollback: {version}");
+                    tracing::debug!("db_version: {db_version} rollback: {version}");
+
+                    continue;
                 }
             } else {
-                version = version.checked_sub(1).unwrap_or_default();
-
-                log::debug!("db_version: {db_version} rollback: {version}");
-                tracing::debug!("db_version: {db_version} rollback: {version}");
-
-                continue;
+                break;
             }
         }
 

@@ -26,8 +26,6 @@ use rqlite_client::{
     state, Connection, Query, RequestBuilder,
 };
 
-mod test_rqlited;
-
 struct NoUreqRequest;
 
 impl<T> RequestBuilder<T> for NoUreqRequest

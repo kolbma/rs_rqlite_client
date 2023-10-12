@@ -16,31 +16,17 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "ureq")]
 
-use lazy_static::lazy_static;
-
 use rqlite_client::{
     request_type::{Get, Post},
     response::mapping,
-    Connection, Request, RequestBuilder, Response,
+    Request, RequestBuilder, Response,
 };
-
-mod test_rqlited;
-
-const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
-
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-}
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
-}
+use test_rqlited::TEST_RQLITED_DB;
 
 #[test]
 fn create_table_test_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let r = Request::<Post>::new().run(&TEST_CONNECTION.execute().push_sql_str(
+    TEST_RQLITED_DB.run_test(|c| {
+        let r = Request::<Post>::new().run(&c.execute().push_sql_str(
             "CREATE TABLE table_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
         ));
 
@@ -71,8 +57,8 @@ fn create_table_test_test() {
 
 #[test]
 fn create_table_error_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let r = Request::<Get>::new().run(&TEST_CONNECTION.query().set_sql_str(
+    TEST_RQLITED_DB.run_test(|c| {
+        let r = Request::<Get>::new().run(&c.query().set_sql_str(
             "CREATE TABLE table_error (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
         ));
 

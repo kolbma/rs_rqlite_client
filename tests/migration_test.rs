@@ -16,77 +16,49 @@
 #![forbid(unsafe_code)]
 #![cfg(all(feature = "ureq", feature = "migration"))]
 
-use std::{
-    path::Path,
-    sync::{Arc, Mutex},
+use std::path::Path;
+
+use rqlite_client::migration::{
+    Downgrade, Migration, SchemaVersion, Upgrade, M, SCHEMA_VERSION_MAX,
 };
-
-use lazy_static::lazy_static;
-
-use rqlite_client::{
-    migration::{Downgrade, Migration, SchemaVersion, Upgrade, M},
-    Connection,
-};
-
-mod test_rqlited;
-
-const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
-
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-}
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
-}
-
-lazy_static! {
-    static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-}
+use test_rqlited::{lock, TEST_RQLITED_DB};
 
 #[test]
 fn migration_test() {
-    let lock = Arc::clone(&LOCK);
-    #[allow(clippy::let_unit_value)]
-    let _locked = *lock.lock().unwrap();
-
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let path = Path::new("./tests/test_migrations");
-        let m = Migration::from_path(path);
-        let version = m.migrate(&TEST_CONNECTION).unwrap_or_else(|err| {
-            unreachable!(
-                "SchemaVersion result for {}: {}",
-                path.canonicalize().unwrap().display(),
-                err
-            )
+    lock!({
+        TEST_RQLITED_DB.run_test(|c| {
+            let path = Path::new("./tests/test_migrations");
+            let m = Migration::from_path(path);
+            let version = m.migrate(&c).unwrap_or_else(|err| {
+                unreachable!(
+                    "SchemaVersion result for {}: {}",
+                    path.canonicalize().unwrap().display(),
+                    err
+                )
+            });
+            assert_eq!(version, m.max());
         });
-        assert_eq!(u64::from(&version), 3_u64);
     });
 }
 
 #[test]
 fn migration_to_test() {
-    let lock = Arc::clone(&LOCK);
-    #[allow(clippy::let_unit_value)]
-    let _locked = *lock.lock().unwrap();
+    lock!({
+        TEST_RQLITED_DB.run_test(|c| {
+            let path = Path::new("./tests/test_migrations");
+            let m = Migration::from_path(path);
+            let err = m.migrate_to(&c, Some(&SCHEMA_VERSION_MAX));
 
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let path = Path::new("./tests/test_migrations");
-        let m = Migration::from_path(path);
-        let err = m.migrate_to(&TEST_CONNECTION, Some(&SchemaVersion(u64::MAX)));
+            assert!(err.is_err());
+            assert_eq!(
+                err.err().unwrap().to_string(),
+                format!("data malformat: no migration {SCHEMA_VERSION_MAX}")
+            );
 
-        assert!(err.is_err());
-        assert_eq!(
-            err.err().unwrap().to_string(),
-            format!("data malformat: no migration {}", u64::MAX)
-        );
+            // do not interfere with other tests
+            let to_version = SchemaVersion(1_u64);
 
-        let to_version = SchemaVersion(1_u64);
-
-        let version = m
-            .migrate_to(&TEST_CONNECTION, Some(&to_version))
-            .unwrap_or_else(|err| {
+            let version = m.migrate_to(&c, Some(&to_version)).unwrap_or_else(|err| {
                 unreachable!(
                     "SchemaVersion result for {}: {}",
                     path.canonicalize().unwrap().display(),
@@ -94,42 +66,39 @@ fn migration_to_test() {
                 )
             });
 
-        assert!(u64::from(&version) >= u64::from(&to_version));
+            assert!(version >= to_version);
+        });
     });
 }
 
 #[test]
 fn rollback_to_test() {
-    let lock = Arc::clone(&LOCK);
-    #[allow(clippy::let_unit_value)]
-    let _locked = *lock.lock().unwrap();
+    lock!({
+        TEST_RQLITED_DB.run_test(|c| {
+            let path = Path::new("./tests/test_migrations");
+            let m = Migration::from_path(path);
 
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let path = Path::new("./tests/test_migrations");
-        let m = Migration::from_path(path);
+            let db_version = m.migrate(&c).unwrap_or_else(|err| {
+                unreachable!(
+                    "SchemaVersion result for {}: {}",
+                    path.canonicalize().unwrap().display(),
+                    err
+                )
+            });
+            assert!(db_version > SchemaVersion(0));
 
-        let db_version = u64::from(&m.migrate(&TEST_CONNECTION).unwrap_or_else(|err| {
-            unreachable!(
-                "SchemaVersion result for {}: {}",
-                path.canonicalize().unwrap().display(),
-                err
-            )
-        }));
-        assert!(db_version > 0);
+            let err = m.rollback_to(&c, &SCHEMA_VERSION_MAX);
 
-        let err = m.rollback_to(&TEST_CONNECTION, &SchemaVersion(u64::MAX));
+            assert!(err.is_err());
+            assert_eq!(
+                err.err().unwrap().to_string(),
+                format!("data malformat: no rollback {SCHEMA_VERSION_MAX}")
+            );
 
-        assert!(err.is_err());
-        assert_eq!(
-            err.err().unwrap().to_string(),
-            format!("data malformat: no rollback {}", u64::MAX)
-        );
+            // last 3 directories are for migration/rollback tests
+            let to_version = m.max() - 3;
 
-        let to_version = SchemaVersion(0_u64);
-
-        let version = m
-            .rollback_to(&TEST_CONNECTION, &to_version)
-            .unwrap_or_else(|err| {
+            let version = m.rollback_to(&c, &to_version).unwrap_or_else(|err| {
                 unreachable!(
                     "SchemaVersion result for {}: {}",
                     path.canonicalize().unwrap().display(),
@@ -137,7 +106,8 @@ fn rollback_to_test() {
                 )
             });
 
-        assert_eq!(u64::from(&version), u64::from(&to_version));
+            assert_eq!(version, to_version);
+        });
     });
 }
 
@@ -150,11 +120,8 @@ fn single_migration_test() {
         Some(Downgrade::from("DROP TABLE temp.single_migration")),
     );
 
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
-        let m = Migration::from(&m_sql);
-
-        let _version = m
-            .migrate(&TEST_CONNECTION)
-            .unwrap_or_else(|err| unreachable!("migration failed: {:?}: {}", m_sql, err));
-    });
+    let m = Migration::from(&m_sql);
+    assert_eq!(m.max(), SchemaVersion(1));
+    let m_pop_sql = m.pop().unwrap();
+    assert_eq!(m_pop_sql, m_sql);
 }

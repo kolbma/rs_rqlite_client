@@ -43,6 +43,7 @@ tracing = { version = "0.1.37", optional = true }
 url = { version = "2.4.1", optional = true }
 
 [dev-dependencies]
+test_rqlited = { path = "./test_rqlited", features = ["url"] }
 time = { version = "0.3.29", features = ["formatting"] }
 
 [build-dependencies]

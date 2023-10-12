@@ -13,6 +13,8 @@ pub enum DataType {
     Boolean,
     /// Integer
     Integer,
+    /// Numeric
+    Numeric,
     /// Float, Double, Real
     Real,
     /// Text
@@ -22,11 +24,12 @@ pub enum DataType {
 impl std::fmt::Display for DataType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DataType::Blob => f.write_str("blob"),
-            DataType::Boolean => f.write_str("boolean"),
-            DataType::Integer => f.write_str("integer"),
-            DataType::Real => f.write_str("real"),
-            DataType::Text => f.write_str("text"),
+            Self::Blob => f.write_str("blob"),
+            Self::Boolean => f.write_str("boolean"),
+            Self::Integer => f.write_str("integer"),
+            Self::Numeric => f.write_str("numeric"),
+            Self::Real => f.write_str("real"),
+            Self::Text => f.write_str("text"),
         }
     }
 }
