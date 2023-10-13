@@ -1,5 +1,7 @@
 //! mapping macros
 
+mod map_deserialized_matcher;
+
 /// Generate implementations of `TryFrom<Mapping>` for a `structure`
 ///
 /// # Examples
@@ -37,8 +39,7 @@
 #[macro_export]
 macro_rules! map_deserialized {
     ($v:vis $p:ident, $t:lifetime => $l:ident) => {
-        #[doc = concat!("Container with _inner_ `", stringify!($p), "`")]
-        #[doc = "\nImplements `Deref`"]
+        #[doc = concat!("Container with _inner_ `", stringify!($p), "`\n\nImplements `Deref`\n")]
         #[derive(Debug)]
         $v struct $l<$t> {
             inner: Vec<$p<$t>>,
@@ -71,43 +72,12 @@ macro_rules! map_deserialized {
             type Error = $crate::Error;
 
             fn try_from(mapping: $crate::response::mapping::Mapping) -> Result<Self, Self::Error> {
-                match mapping {
-                    $crate::response::mapping::Mapping::Associative(mut associative) => {
-                        let mut v = Vec::new();
-
-                        while let Some(row) = associative.rows.pop() {
-                            v.insert(0, $p::deserialize(serde::de::value::MapDeserializer::new(row.into_iter()))
-                                .map_err(|err| $crate::Error::ResultError(err.to_string()))?);
-                        }
-
-                        Ok($l::new(v))
-                    }
-                    $crate::response::mapping::Mapping::Error(err) => Err((err.error.as_str()).into()),
-                    $crate::response::mapping::Mapping::Execute(_) => {
-                        unimplemented!("execute mapping")
-                    },
-                    $crate::response::mapping::Mapping::Standard(standard) => {
-                        let mut associative = $crate::response::mapping::Associative::from(standard);
-
-                        let mut v = Vec::new();
-
-                        while let Some(row) = associative.rows.pop() {
-                            v.insert(0, $p::deserialize(serde::de::value::MapDeserializer::new(row.into_iter()))
-                                .map_err(|err| $crate::Error::ResultError(err.to_string()))?);
-                        }
-
-                        Ok($l::new(v))
-                    }
-                    $crate::response::mapping::Mapping::Empty(_) => {
-                        Err("empty result".into())
-                    }
-                }
+                $crate::map_deserialized_matcher!($p, $l, mapping)
             }
         }
     };
     ($v:vis $p:ident => $l:ident) => {
-        #[doc = concat!("Container with _inner_ `", stringify!($p), "`")]
-        #[doc = "\nImplements `Deref`"]
+        #[doc = concat!("Container with _inner_ `", stringify!($p), "`\n\nImplements `Deref`\n")]
         #[derive(Debug)]
         $v struct $l {
             inner: Vec<$p>,
@@ -139,37 +109,7 @@ macro_rules! map_deserialized {
             type Error = $crate::Error;
 
             fn try_from(mapping: $crate::response::mapping::Mapping) -> Result<Self, Self::Error> {
-                match mapping {
-                    $crate::response::mapping::Mapping::Associative(mut associative) => {
-                        let mut v = Vec::new();
-
-                        while let Some(row) = associative.rows.pop() {
-                            v.insert(0, $p::deserialize(serde::de::value::MapDeserializer::new(row.into_iter()))
-                                .map_err(|err| $crate::Error::ResultError(err.to_string()))?);
-                        }
-
-                        Ok($l::new(v))
-                    }
-                    $crate::response::mapping::Mapping::Error(err) => Err((err.error.as_str()).into()),
-                    $crate::response::mapping::Mapping::Execute(_) => {
-                        unimplemented!("execute mapping")
-                    },
-                    $crate::response::mapping::Mapping::Standard(standard) => {
-                        let mut associative = $crate::response::mapping::Associative::from(standard);
-
-                        let mut v = Vec::new();
-
-                        while let Some(row) = associative.rows.pop() {
-                            v.insert(0, $p::deserialize(serde::de::value::MapDeserializer::new(row.into_iter()))
-                                .map_err(|err| $crate::Error::ResultError(err.to_string()))?);
-                        }
-
-                        Ok($l::new(v))
-                    }
-                    $crate::response::mapping::Mapping::Empty(_) => {
-                        Err("empty result".into())
-                    }
-                }
+                $crate::map_deserialized_matcher!($p, $l, mapping)
             }
         }
     };
