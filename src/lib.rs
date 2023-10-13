@@ -292,7 +292,7 @@ pub use request::{request_type, Request, RequestType};
 pub use request_builder::RequestBuilder;
 #[doc(inline)]
 pub use response::{mapping::Mapping, Response};
-pub use serde_json::Value;
+pub use serde_json::{Error as SerdeError, Value};
 #[cfg(feature = "ureq")]
 pub use ureq;
 
