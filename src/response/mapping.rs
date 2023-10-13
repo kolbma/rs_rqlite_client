@@ -11,6 +11,7 @@ mod associative;
 mod empty;
 mod error;
 mod execute;
+mod macros;
 mod standard;
 mod timed;
 
