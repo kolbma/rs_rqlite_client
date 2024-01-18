@@ -1,19 +1,4 @@
-#![warn(clippy::pedantic)]
-#![warn(
-    missing_debug_implementations,
-    missing_docs,
-    non_ascii_idents,
-    trivial_casts,
-    trivial_numeric_casts,
-    unreachable_pub,
-    unsafe_code,
-    // unused_crate_dependencies,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_qualifications,
-    unused_results
-)]
-#![forbid(unsafe_code)]
+#![allow(unused_crate_dependencies)]
 #![cfg(feature = "ureq")]
 
 use std::time::Duration;

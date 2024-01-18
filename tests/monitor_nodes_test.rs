@@ -1,19 +1,4 @@
-#![warn(clippy::pedantic)]
-#![warn(
-    missing_debug_implementations,
-    missing_docs,
-    non_ascii_idents,
-    trivial_casts,
-    trivial_numeric_casts,
-    unreachable_pub,
-    unsafe_code,
-    // unused_crate_dependencies,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_qualifications,
-    unused_results
-)]
-#![forbid(unsafe_code)]
+#![allow(unused_crate_dependencies)]
 #![cfg(all(feature = "monitor", feature = "ureq"))]
 
 use rqlite_client::monitor::response;
@@ -27,7 +12,7 @@ fn monitor_nodes_test() {
         let r = q.request_run();
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
-        let nodes = response::Nodes::try_from(r.unwrap()).unwrap();
+        let nodes = response::Nodes::from(r.unwrap());
         let node = nodes.get("localhost:4002").unwrap();
         assert!(node.leader);
         assert!(node.reachable);

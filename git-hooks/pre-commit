@@ -10,5 +10,5 @@ fail() {
 
 cargo readme -o README.md && \
 cargo fmt --check && \
-cargo clippy --no-deps -- -Dwarnings && \
+cargo clippy --no-deps --all-features -- -Dwarnings && \
 git add README.md || fail

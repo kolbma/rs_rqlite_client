@@ -1,6 +1,6 @@
 [package]
 name = "rqlite_client"
-version = "0.0.1-alpha.10"
+version = "0.0.1-alpha.11"
 authors = ["Markus Kolb"]
 description = "rqlite database client with optional extra convenience"
 documentation = "https://docs.rs/rqlite_client/"
@@ -18,7 +18,6 @@ categories = ["database"]
 [package.metadata]
 # minimum supported rust version 1.67.0 - crate time dependency
 msrv = "1.67.0"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata.docs.rs]
 all-features = true
@@ -63,3 +62,27 @@ ureq_socks_proxy = ["ureq", "ureq/socks-proxy"]
 ureq_tls = ["ureq", "ureq/tls", "ureq/native-certs"]
 ureq_webpki = ["ureq", "ureq/tls"]
 url = ["dep:url"]
+
+[lints.rust]
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+non_ascii_idents = "warn"
+rust_2021_incompatible_closure_captures = "warn"
+rust_2021_incompatible_or_patterns = "warn"
+rust_2021_prefixes_incompatible_syntax = "warn"
+rust_2021_prelude_collisions = "warn"
+single_use_lifetimes = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+unreachable_pub = "warn"
+unsafe_code = "forbid"
+unused_crate_dependencies = "warn"
+unused_extern_crates = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+unused_macros = "warn"
+unused_qualifications = "warn"
+unused_results = "warn"
+
+[lints.clippy]
+pedantic = "warn"
