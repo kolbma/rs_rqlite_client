@@ -75,6 +75,15 @@ impl Iterator for Query {
     }
 }
 
+impl<'a> IntoIterator for &'a Query {
+    type IntoIter = std::slice::Iter<'a, Mapping>;
+    type Item = &'a Mapping;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 #[cfg(feature = "ureq")]
 impl TryFrom<ureq::Response> for Query {
     type Error = Error;
