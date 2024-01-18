@@ -73,11 +73,10 @@ pub(crate) fn user_agent(connection: Option<&Connection>) -> ureq::Agent {
         })
         .or_else(Connection::detect_proxy);
 
-    let agent = if let Some(proxy) = proxy {
+    let agent = if let Some(proxy) = &proxy {
         log::debug!("try proxy {proxy}");
         tracing::debug!("try proxy {proxy}");
-        #[allow(clippy::needless_borrows_for_generic_args)]
-        match ureq::Proxy::new(&proxy) {
+        match ureq::Proxy::new(proxy) {
             Ok(ureq_proxy) => {
                 log::info!("use proxy {proxy}");
                 tracing::info!("use roxy {proxy}");
