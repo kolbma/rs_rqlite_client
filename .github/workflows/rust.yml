@@ -128,7 +128,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
-        default: true
     - uses: actions/checkout@v4
     - run: |
         cargo --version
@@ -143,7 +142,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
-        default: true
     - uses: actions/checkout@v4
     - run: |
         cargo --version
