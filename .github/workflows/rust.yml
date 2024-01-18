@@ -21,50 +21,44 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
         components: clippy, rustfmt
-        default: true
     - uses: actions/checkout@v4
     - uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all-features
-    - uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --check
+    - run: |
+        cargo --version
+    - run: cargo fmt --check
 
   cargo-doc-stable:
     runs-on: ubuntu-latest
     needs: source-check
 
     steps:
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
-        default: true
     - uses: actions/checkout@v4
-    - uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --verbose --all-features --no-deps
+    - run: |
+        cargo --version
+    - run: cargo doc --verbose --all-features --no-deps
 
   cargo-doc-msrv:
     runs-on: ubuntu-latest
     needs: source-check
 
     steps:
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
-        default: true
     - uses: actions/checkout@v4
-    - uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --verbose --all-features --no-deps
+    - run: |
+        cargo --version
+    - run: cargo doc --verbose --all-features --no-deps
 
   test-stable-features:
     runs-on: ubuntu-latest
@@ -83,11 +77,10 @@ jobs:
         docker-images: true
         swap-storage: false
         tool-cache: false
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
         components: clippy
-        default: true
     - name: Run sccache-cache
       uses: mozilla-actions/sccache-action@v0.0.3
     - uses: actions/checkout@v4
@@ -114,11 +107,10 @@ jobs:
         docker-images: true
         swap-storage: false
         tool-cache: false
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         components: clippy
-        default: true
     - name: Run sccache-cache
       uses: mozilla-actions/sccache-action@v0.0.3
     - uses: actions/checkout@v4
@@ -133,27 +125,27 @@ jobs:
     needs: source-check
 
     steps:
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: stable
         default: true
     - uses: actions/checkout@v4
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --release
+    - run: |
+        cargo --version
+        rustc --version
+    - run: cargo build --verbose --release
 
   build-msrv:
     runs-on: ubuntu-latest
     needs: build-stable
 
     steps:
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         default: true
     - uses: actions/checkout@v4
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --release
+    - run: |
+        cargo --version
+        rustc --version
+    - run: cargo build --verbose --release
