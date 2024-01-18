@@ -194,7 +194,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "unimplemented in map_deserialized_matcher macro")]
     #[ignore]
     fn map_deserialized_execute_test() {
         let m = Mapping::Execute(mapping::Execute {
