@@ -12,7 +12,7 @@ use crate::{state::State, Query};
 pub struct Readyz;
 impl State for Readyz {}
 
-impl<'a> Query<'a, Readyz> {
+impl Query<'_, Readyz> {
     /// Enable noleader query param to check all nodes, regardless of Leader status
     ///
     /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#readiness-checks>

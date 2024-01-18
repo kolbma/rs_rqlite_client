@@ -89,7 +89,7 @@ impl<'a> TryFrom<Sql<'a>> for Value {
     }
 }
 
-impl<'a> TryFrom<&Path> for Sql<'a> {
+impl TryFrom<&Path> for Sql<'_> {
     type Error = MigrationError;
 
     fn try_from(path: &Path) -> Result<Self, Self::Error> {

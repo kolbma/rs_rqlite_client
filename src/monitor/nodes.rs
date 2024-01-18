@@ -15,7 +15,7 @@ use crate::{state::State, Query};
 pub struct Nodes;
 impl State for Nodes {}
 
-impl<'a> Query<'a, Nodes> {
+impl Query<'_, Nodes> {
     /// Enable nonvoters query param to check also read-only nodes
     ///
     /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#nodes-api>

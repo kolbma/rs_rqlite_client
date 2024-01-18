@@ -545,7 +545,7 @@ where
     #[inline]
     fn get_sql_str_query(&self) -> Option<&str> {
         if self.endpoint == Endpoint::Query && self.sql.len() == 1 {
-            if let Some(sql) = self.sql.get(0) {
+            if let Some(sql) = self.sql.first() {
                 let sql_str_query = sql.as_str();
                 log::debug!("sql_str_query: {sql_str_query:?}");
                 tracing::debug!("sql_str_query: {sql_str_query:?}");
@@ -806,7 +806,7 @@ macro_rules! gen_query {
         }
 
         #[doc = concat!("`Query<", stringify!($level_out), ">`\n\nSee [`Query`]\n\n")]
-        impl<'a> Query<'a, $level_out> {
+        impl Query<'_, $level_out> {
             #[doc = "Enable transaction\n\n\
                     A form of transactions are supported. To execute statements within a transaction, add transaction to the URL.\n\n\
                     When a transaction takes place either all statements of a `Query` will succeed, or neither.  \n\
@@ -855,7 +855,7 @@ macro_rules! gen_query_freshness {
     ( $($level:path),+ ) => {
         $(
             #[doc = concat!("`Query<", stringify!($level), ">`\n\nSee [`Query`]\n\n")]
-            impl<'a> Query<'a, $level> {
+            impl Query<'_, $level> {
                 #[doc = concat!("`Freshness` of `Query<", stringify!($level), ">` or `None`\n\n")]
                 #[doc = "The amount of time the database _node_ is allowed for not checking the _leader_ for\ndata accuracy.  \n"]
                 #[doc = "If data is _stale_, there will be an error response.\n\nSee [`Freshness`] for more details."]
