@@ -314,7 +314,7 @@ where
     /// Add single `migration` `M`
     #[must_use]
     #[inline]
-    pub fn push<'m: 'a>(mut self, migration: M<'m>) -> Self {
+    pub fn push(mut self, migration: M<'a>) -> Self {
         self.migrations.push(migration);
         self
     }
@@ -580,7 +580,7 @@ impl<'a> Migration<'a, crate::Request<crate::request_type::Post>> {
 }
 
 #[cfg(feature = "ureq")]
-impl<'a> Default for Migration<'a, crate::Request<crate::request_type::Post>> {
+impl Default for Migration<'_, crate::Request<crate::request_type::Post>> {
     fn default() -> Self {
         Self {
             migrations: Vec::new(),
@@ -606,7 +606,7 @@ impl<'a> From<&'a M<'a>> for Migration<'a, crate::Request<crate::request_type::P
 }
 
 #[cfg(not(feature = "ureq"))]
-impl<'a, T> Default for Migration<'a, T>
+impl<T> Default for Migration<'_, T>
 where
     T: RequestBuilder<state::NoLevelMulti>,
 {
