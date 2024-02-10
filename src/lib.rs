@@ -22,7 +22,7 @@ See [Usage](#usage) and [Examples](#examples) for further information!
 
 # Features
 
-* __default = ["monitor", "ureq", "url"]__
+* __default = \["monitor", "ureq", "url"\]__
 
 * `log`
 

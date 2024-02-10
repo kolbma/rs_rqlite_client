@@ -16,7 +16,8 @@ jobs:
     - uses: dtolnay/rust-toolchain@master
       with:
           toolchain: stable
-    - uses: katyo/publish-crates@v2
+    # - uses: katyo/publish-crates@v2
+    - uses: kolbma/publish-crates@issue-677
       with:
-          dry-run: false
+          dry-run: true
           registry-token: ${{ secrets.CRATES_RQLITE_CLIENT }}
