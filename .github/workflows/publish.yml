@@ -19,5 +19,5 @@ jobs:
     # - uses: katyo/publish-crates@v2
     - uses: kolbma/publish-crates@issue-677
       with:
-          dry-run: true
+          dry-run: false
           registry-token: ${{ secrets.CRATES_RQLITE_CLIENT }}
