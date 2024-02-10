@@ -1,6 +1,6 @@
 [package]
 name = "rqlite_client"
-version = "0.0.1-alpha.14"
+version = "0.0.1-alpha.15"
 authors = ["Markus Kolb"]
 description = "rqlite database client with optional extra convenience"
 documentation = "https://docs.rs/rqlite_client/"
@@ -29,7 +29,7 @@ maintenance = { status = "actively-developed" }
 lazy_static = { version = "1.4.0" }
 log = { version = "0.4.20", optional = true }
 percent-encoding = { version = "2.3.1", default-features = false, optional = true }
-ureq = { git = "https://github.com/kolbma/ureq.git", branch = "no_hootbin", features = [
+ureq = { git = "https://github.com/kolbma/ureq.git", branch = "no_hootbin", version = "2.9.5", features = [
     "gzip",
     "json",
 ], optional = true }
