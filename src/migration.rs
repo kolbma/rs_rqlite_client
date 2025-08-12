@@ -82,7 +82,7 @@ impl<'a> From<&'a M<'a>> for Mtuple<'a> {
 /// [`embed_migrations!`](crate::embed_migrations!) and [`Migration::from_embed()`].
 ///
 /// It is allowed to put single-line comments with `#`, `;;`, `//`, `--` at the start of the line
-/// (after whitespaces) in your _SQL_ data.  
+/// (after whitespaces) in your _SQL_ data.\
 /// It is also possible to insert line-breaks in _SQL_ statements with __`\`__ at the line end.
 ///
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -379,8 +379,6 @@ where
 
                     log::debug!("db_version: {db_version} rollback: {version}");
                     tracing::debug!("db_version: {db_version} rollback: {version}");
-
-                    continue;
                 }
             } else {
                 break;

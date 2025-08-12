@@ -3,7 +3,7 @@
 /// Handle different convertable `Value`s in a slice
 ///
 /// To protect against [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) use
-/// parameterized statements.  
+/// parameterized statements.\
 /// It is possible to use ordered question mark statements or named parameters.
 ///
 /// See <https://rqlite.io/docs/api/api/#parameterized-statements> and <https://rqlite.io/docs/api/api/#named-parameters>.

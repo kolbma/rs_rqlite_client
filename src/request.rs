@@ -23,7 +23,7 @@ mod tls;
 ///
 /// Requires enabled feature `ureq`.
 ///
-/// Requests can be initialized manually, but there should be little requirements for.  
+/// Requests can be initialized manually, but there should be little requirements for.\
 /// The preferred usage is via [`Query`] and [`Query::request_run()`].
 ///
 #[derive(Clone, Debug)]
@@ -108,8 +108,8 @@ lazy_static! {
 
 impl Request<Get> {
     fn request<T: State>(agent: Option<&ureq::Agent>, query: &Query<T>) -> Result {
-        log::debug!("[GET] {}: {:?}", query.to_string(), query.sql());
-        tracing::debug!("[GET] {}: {:?}", query.to_string(), query.sql());
+        log::debug!("[GET] {query}: {:?}", query.sql());
+        tracing::debug!("[GET] {query}: {:?}", query.sql());
 
         let agent = if let Some(agent) = agent {
             agent
@@ -135,8 +135,8 @@ impl Request<Get> {
 
 impl Request<Post> {
     fn request<T: State>(agent: Option<&ureq::Agent>, query: &Query<T>) -> Result {
-        log::debug!("[POST] {}: {:?}", query.to_string(), query.sql());
-        tracing::debug!("[POST] {}: {:?}", query.to_string(), query.sql());
+        log::debug!("[POST] {query}: {:?}", query.sql());
+        tracing::debug!("[POST] {query}: {:?}", query.sql());
 
         let agent = if let Some(agent) = agent {
             agent

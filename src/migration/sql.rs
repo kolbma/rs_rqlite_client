@@ -26,7 +26,7 @@ impl Sql<'_> {
     }
 
     #[inline]
-    pub fn lines(&self) -> Lines {
+    pub fn lines(&self) -> Lines<'_> {
         self.as_str().lines()
     }
 

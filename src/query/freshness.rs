@@ -4,10 +4,10 @@ use std::time::Duration;
 
 use super::duration_string::DurationString;
 
-/// You can tell the receiving node not to return results staler than a certain duration, however.  
+/// You can tell the receiving node not to return results staler than a certain duration, however.\
 /// If a read request sets the query parameter freshness, the node serving the read will check that less time has
-/// passed since it was last in contact with the Leader, than that specified via freshness.  
-/// If more time has passed the node will return an error.  
+/// passed since it was last in contact with the Leader, than that specified via freshness.\
+/// If more time has passed the node will return an error.\
 /// This approach can be useful if you want to maximize successful query operations, but are willing to tolerate
 /// occassional, short-lived networking issues between nodes.
 ///
