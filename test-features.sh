@@ -22,6 +22,12 @@ cargo_test() {
             cargo test --no-default-features -F "$feature $addon"
             rc="$?"
         }
+
+        [ "$rc" -eq 0 ] && {
+            echo "$0: cargo test --no-default-features -F \"$feature $addon\" --doc -- --nocapture"
+            RUSTFLAGS="-D warnings" cargo test --no-default-features -F "$feature $addon" --doc -- --nocapture
+            rc="$?"
+        }
     else
         [ -n "$all_features" ] && all_features="--all-features"
 
@@ -36,9 +42,17 @@ cargo_test() {
             cargo test $all_features
             rc="$?"
         }
+
+        [ "$rc" -eq 0 ] && {
+            echo "$0: cargo test $all_features --doc -- --nocapture"
+            RUSTFLAGS="-D warnings" cargo test $all_features --doc -- --nocapture
+            rc="$?"
+        }
     fi
 
     [ "$rc" -eq 0 ] || {
+        f="$all_features"
+        [ -n "$feature" ] && f="$feature $addon"
         echo "0: failed feature $f" >&2
         exit "$rc"
     }
