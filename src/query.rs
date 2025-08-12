@@ -65,6 +65,7 @@ where
     is_pretty: bool,
     is_queue: bool,
     is_redirect: bool,
+    pub(crate) is_sync: bool,
     is_timing: bool,
     is_transaction: bool,
     is_url_modified: bool,
@@ -77,6 +78,7 @@ where
     url_cache: RefCell<Option<url::Url>>,
     #[cfg(not(feature = "url"))]
     url_cache: RefCell<Option<String>>,
+    version: Option<u8>,
 }
 
 impl<'a, T> Query<'a, T>
@@ -146,7 +148,7 @@ where
 
     /// Check for pretty `Query`
     ///
-    /// The use of the URL param pretty is optional, and results in pretty-printed JSON responses.  
+    /// The use of the URL param pretty is optional, and results in pretty-printed JSON responses.\
     /// Makes only sense during debug, because it is more verbose in memory and speed.
     ///
     #[must_use]
@@ -158,7 +160,7 @@ where
     /// Check for queued `Query`
     ///
     /// __rqlite__ exposes a special API flag, which will instruct rqlite to queue up write-requests
-    /// and execute them asynchronously.  
+    /// and execute them asynchronously.\
     /// rqlite will merge the requests, once a batch-size of them has been queued on the node or a
     /// configurable timeout expires, and execute them as though they had been both contained in a
     /// single request.
@@ -182,7 +184,7 @@ where
     /// See <https://rqlite.io/docs/api/api/#disabling-request-forwarding>
     ///
     /// The url path param indicates a disabled redirect, but we use it
-    /// here in the sense of the word.  
+    /// here in the sense of the word.\
     /// So when path param should be set, this needs to return `false`.
     ///
     #[must_use]
@@ -210,7 +212,7 @@ where
     /// Note that processing of the request ceases the moment any single query results in an error.
     ///
     /// The behaviour of rqlite if you explicitly issue BEGIN, COMMIT, ROLLBACK, SAVEPOINT, and RELEASE to control
-    /// your own transactions is __not defined__.  
+    /// your own transactions is __not defined__.\
     /// This is because the behavior of a cluster if it fails while such a manually-controlled transaction is not
     /// yet defined.
     ///
@@ -400,12 +402,20 @@ where
             query_args.push("redirect".to_string());
         }
 
+        if self.is_sync {
+            query_args.push("sync".to_string());
+        }
+
         if self.is_timing {
             query_args.push("timing".to_string());
         }
 
         if self.is_transaction {
             query_args.push("transaction".to_string());
+        }
+
+        if let Some(ver) = self.version {
+            query_args.push(format!("ver={ver}"));
         }
 
         if self.is_wait {
@@ -530,6 +540,21 @@ where
         }
     }
 
+    /// Enable sync query param
+    #[cfg(feature = "monitor")]
+    #[must_use]
+    #[inline]
+    pub(crate) fn enable_sync_helper(mut self) -> Self {
+        if self.is_sync {
+            self
+        } else {
+            self.is_sync = true;
+            log::trace!("is_sync: {}", self.is_sync);
+            tracing::trace!("is_sync: {}", self.is_sync);
+            self.url_modified()
+        }
+    }
+
     #[inline]
     fn enable_transaction_helper(mut self) -> Self {
         if self.endpoint == Endpoint::Query {
@@ -540,6 +565,23 @@ where
             tracing::trace!("is_transaction: {}", self.is_transaction);
             self.url_modified()
         }
+    }
+
+    /// Enable ver2 query param
+    #[cfg(feature = "monitor")]
+    #[must_use]
+    #[inline]
+    pub(crate) fn enable_version_helper(mut self, version: u8) -> Self {
+        if let Some(ver) = self.version {
+            if ver == version {
+                return self;
+            }
+        }
+
+        self.version = Some(version);
+        log::trace!("version: {version}");
+        tracing::trace!("version: {version}");
+        self.url_modified()
     }
 
     #[inline]
@@ -585,8 +627,8 @@ where
         }
 
         self = if self.endpoint == Endpoint::Query {
-            log::trace!("sql: {:?}", sql);
-            tracing::trace!("sql: {:?}", sql);
+            log::trace!("sql: {sql:?}");
+            tracing::trace!("sql: {sql:?}");
 
             self_sql.push(sql);
             self.url_modified()
@@ -634,8 +676,8 @@ where
             sql
         };
 
-        log::trace!("sql: {:?}", sql);
-        tracing::trace!("sql: {:?}", sql);
+        log::trace!("sql: {sql:?}");
+        tracing::trace!("sql: {sql:?}");
         self_mod.sql.push(sql);
         self_mod
     }
@@ -732,6 +774,7 @@ where
         is_pretty: src.is_pretty,
         is_queue: src.is_queue,
         is_redirect: src.is_redirect,
+        is_sync: src.is_sync,
         is_timing: src.is_timing,
         is_transaction: src.is_transaction,
         is_url_modified: src.is_url_modified,
@@ -741,6 +784,7 @@ where
         timeout: src.timeout,
         timeout_request: src.timeout_request,
         url_cache: src.url_cache,
+        version: None,
     }
 }
 
@@ -1027,6 +1071,7 @@ impl<'a> Query<'a, state::NoLevel> {
             is_pretty: false,
             is_queue: false,
             is_redirect: true,
+            is_sync: false,
             is_timing: false,
             is_transaction: false,
             is_url_modified: false,
@@ -1036,6 +1081,7 @@ impl<'a> Query<'a, state::NoLevel> {
             timeout: None,
             timeout_request: None,
             url_cache: RefCell::new(None),
+            version: None,
         }
     }
 
@@ -1128,7 +1174,7 @@ impl<'a> Query<'a, state::NoLevelMulti> {
 impl<'a> Query<'a, crate::monitor::Monitor> {
     /// _Nodes_ return basic information for nodes in the cluster, as seen by the node
     /// receiving the nodes request. The receiving node will also check whether it can actually
-    /// connect to all other nodes in the cluster.  
+    /// connect to all other nodes in the cluster.\
     /// This is an effective way to determine the cluster leader, and the leader’s HTTP API address.
     /// It can also be used to check if the cluster is basically running.
     /// If the other nodes are reachable, it probably is.

@@ -7,13 +7,16 @@ use crate::Error;
 /// See also [`monitor::Readyz`](crate::monitor::Readyz)
 ///
 #[derive(Debug, PartialEq)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Readyz {
     /// `true` when node ready
     pub is_node_ok: bool,
     /// `true` when leader is ok ([`Query::is_noleader()`](crate::Query::is_noleader()) false)
     pub is_leader_ok: bool,
-    /// `true` when store is ok ([`Query::is_noleader()`](crate::Query::is_noleader()) false)
+    /// `true` when store is ok
     pub is_store_ok: bool,
+    /// `true` when sync is ok ([`Query::is_sync()`](crate::Query::is_sync()))
+    pub is_sync_ok: bool,
 }
 
 const MAX_READYZ_LINE_LEN: usize = 12;
@@ -26,6 +29,7 @@ impl FromStr for Readyz {
             is_node_ok: false,
             is_leader_ok: false,
             is_store_ok: false,
+            is_sync_ok: false,
         };
 
         let lines = s.lines();
@@ -40,6 +44,8 @@ impl FromStr for Readyz {
                 readyz.is_leader_ok = true;
             } else if line.ends_with("store ok") {
                 readyz.is_store_ok = true;
+            } else if line.ends_with("sync ok") {
+                readyz.is_sync_ok = true;
             } else {
                 return Err("readyz unknown line".into());
             }

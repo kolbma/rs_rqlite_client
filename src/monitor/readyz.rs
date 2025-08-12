@@ -21,6 +21,28 @@ impl Query<'_, Readyz> {
     pub fn enable_noleader(self) -> Self {
         self.enable_noleader_helper()
     }
+
+    /// Enable sync query param to block until the node has received the log entry
+    /// equal to Leader’s Commit Index as it was set by the latest Heartbeat
+    /// received from the Leader.\
+    /// This allows you to check that a node is “caught up” with the Leader.
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#sync-flag>
+    ///
+    #[must_use]
+    pub fn enable_sync(self) -> Self {
+        self.enable_sync_helper()
+    }
+
+    /// Check for readiness `sync` query flag status
+    ///
+    /// See <https://rqlite.io/docs/guides/monitoring-rqlite/#sync-flag>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn is_sync(&self) -> bool {
+        self.is_sync
+    }
 }
 
 #[cfg(test)]
@@ -62,5 +84,19 @@ mod tests {
             &q.create_path_with_query(),
             "/readyz?noleader&pretty&timeout=3s"
         );
+    }
+
+    #[test]
+    fn monitor_readyz_sync_test() {
+        let mut q = Query::new(&TEST_CONNECTION).monitor().readyz();
+
+        assert_eq!(&q.create_path_with_query(), "/readyz");
+
+        q = q.enable_sync();
+
+        assert_eq!(&q.create_path_with_query(), "/readyz?sync");
+
+        q = q.set_timeout(Duration::from_secs(3).into());
+        assert_eq!(&q.create_path_with_query(), "/readyz?sync&timeout=3s");
     }
 }

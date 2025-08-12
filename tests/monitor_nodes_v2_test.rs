@@ -5,15 +5,15 @@ use rqlite_client::monitor::response;
 use test_rqlited::{TEST_RQLITED_DB, TEST_RQLITED_DB_URL};
 
 #[test]
-fn monitor_nodes_test() {
+fn monitor_nodes_v2_test() {
     TEST_RQLITED_DB.run_test(|c| {
         let q = c.monitor().nodes();
 
         let r = q.request_run();
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
-        let nodes = response::Nodes::from(r.unwrap());
-        let node = nodes.get("localhost:4002").unwrap();
+        let nodes = response::NodesV2::from(r.unwrap());
+        let node = nodes.first().unwrap();
         assert!(node.leader);
         assert!(node.reachable);
         assert_eq!(node.api_addr, TEST_RQLITED_DB_URL);
@@ -21,15 +21,15 @@ fn monitor_nodes_test() {
 }
 
 #[test]
-fn monitor_nodes_ver2_test() {
+fn monitor_nodes_v2_ver2_test() {
     TEST_RQLITED_DB.run_test(|c| {
         let q = c.monitor().nodes().enable_version2();
 
         let r = q.request_run();
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
-        let nodes = response::Nodes::from(r.unwrap());
-        let node = nodes.get("localhost:4002").unwrap();
+        let nodes = response::NodesV2::from(r.unwrap());
+        let node = nodes.first().unwrap();
         assert!(node.leader);
         assert!(node.reachable);
         assert_eq!(node.api_addr, TEST_RQLITED_DB_URL);

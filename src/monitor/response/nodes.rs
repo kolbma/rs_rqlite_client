@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use crate::response::mapping::Timed;
 
+use super::NodesV2;
+
 /// Data container for response of [`monitor::Endpoint::Nodes`](crate::monitor::Endpoint::Nodes)
 ///
 /// See also [`monitor::Nodes`](crate::monitor::Nodes)
@@ -35,10 +37,29 @@ impl TryFrom<ureq::Response> for Nodes {
     }
 }
 
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+impl From<Nodes> for NodesV2 {
+    fn from(nodes: Nodes) -> Self {
+        Self {
+            nodes: nodes.values().cloned().collect(),
+        }
+    }
+}
+
+impl From<NodesV2> for Nodes {
+    fn from(nodes_v2: NodesV2) -> Self {
+        let mut nodes = HashMap::new();
+        for node in nodes_v2.nodes {
+            let _ = nodes.insert(node.id.clone(), node);
+        }
+        Self(nodes)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct NodeState {
     pub addr: String,
     pub api_addr: String,
+    pub id: String,
     pub leader: bool,
     pub reachable: bool,
     pub time: f64,

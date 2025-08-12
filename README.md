@@ -3,7 +3,7 @@
 ![Maintenance](https://img.shields.io/badge/maintenance-activly--developed-brightgreen.svg)
 [![Rust](https://github.com/kolbma/rs_rqlite_client/actions/workflows/rust.yml/badge.svg)](https://github.com/kolbma/rs_rqlite_client/actions/workflows/rust.yml)
 
-# rqlite_client v0.0.1-alpha.15
+# rqlite_client v0.0.1-alpha.16
 
 
 This is an __rqlite__ database client library with optional extra _convenience_.
@@ -32,72 +32,72 @@ See [Usage](#usage) and [Examples](#examples) for further information!
 
 * `log`
 
-    Uses [`log`](https://crates.io/crates/log) for some logging. Logger need to be configured via `log` crate
-    in your application code.
-    <br><br>
+  Uses [`log`](https://crates.io/crates/log) for some logging. Logger need to be configured via `log` crate
+  in your application code.
+  <br><br>
 
 * `migration`
 
-    Enables support for schema migration of __rqlite__ database.
-    See [`Migration`](https://docs.rs/rqlite_client/latest/rqlite_client/migration/struct.Migration.html).
-    <br><br>
+  Enables support for schema migration of __rqlite__ database.
+  See [`Migration`](https://docs.rs/rqlite_client/latest/rqlite_client/migration/struct.Migration.html).
+  <br><br>
 
 * `migration_embed`
 
-    Enables schema migration support with embedding SQL from files in the application code.
-    See [`Migration`](https://docs.rs/rqlite_client/latest/rqlite_client/migration/struct.Migration.html).
-    <br><br>
+  Enables schema migration support with embedding SQL from files in the application code.
+  See [`Migration`](https://docs.rs/rqlite_client/latest/rqlite_client/migration/struct.Migration.html).
+  <br><br>
 
 * `monitor`
 
-    Enables monitor endpoints.
-    See [Monitor](https://docs.rs/rqlite_client/latest/rqlite_client/monitor/index.html).
-    <br><br>
+  Enables monitor endpoints.
+  See [Monitor](https://docs.rs/rqlite_client/latest/rqlite_client/monitor/index.html).
+  <br><br>
 
 * `percent_encoding`
 
-    If you disable feature `url`, you have to add feature `percent_encoding` to get working _GET_ _SELECT_ queries.
-    <br><br>
+  If you disable feature `url`, you have to add feature `percent_encoding` to get working _GET_ _SELECT_ queries.
+  <br><br>
 
 * `tracing`
 
-    Uses [`tracing`](https://crates.io/crates/tracing) for some logging. Tracing need to be configured
-    via `tracing` crate in your application code.
-    <br><br>
+  Uses [`tracing`](https://crates.io/crates/tracing) for some logging. Tracing need to be configured
+  via `tracing` crate in your application code.
+  <br><br>
 
 * `ureq`
 
-    The default HTTP client used for communication with the __rqlite__ database. If you disable the feature,
-    you have to provide an
-    own [`RequestBuilder`](https://docs.rs/rqlite_client/latest/rqlite_client/trait.RequestBuilder.html)
-    implementation to handle your replacement
-    of [`Request`](https://docs.rs/rqlite_client/latest/rqlite_client/struct.Request.html).
-    <br><br>
+  The default HTTP client used for communication with the __rqlite__ database. If you disable the feature,
+  you have to provide an
+  own [`RequestBuilder`](https://docs.rs/rqlite_client/latest/rqlite_client/trait.RequestBuilder.html)
+  implementation to handle your replacement
+  of [`Request`](https://docs.rs/rqlite_client/latest/rqlite_client/struct.Request.html).
+  <br><br>
 
 * `ureq_charset`
 
-    Enables Non-UTF8 charset handling in `ureq` requests.
-    <br><br>
+  Enables Non-UTF8 charset handling in `ureq` requests.
+  <br><br>
 
 * `ureq_socks_proxy`
 
-    Enables support of __Socks Proxy__ Urls in `ureq`.
-    <br><br>
+  Enables support of __Socks Proxy__ Urls in `ureq`.
+  <br><br>
 
 * `ureq_tls`
 
-    Enables __TLS__ support for `ureq`-requests with loading certs from system store.
-    <br><br>
+  Enables __TLS__ support for `ureq`-requests with loading certs from system store.
+  <br><br>
 
 * `ureq_webpki`
 
-    Enables __TLS__ support for `ureq`-requests with only embedded Mozilla cert store.
-    <br><br>
+  Enables __TLS__ support for `ureq`-requests with only embedded Mozilla cert store.
+  <br><br>
 
 * `url`
 
-    Uses per default [`url::Url`](https://docs.rs/url/latest/url/struct.Url.html) instead of string
-    manipulation and [`percent_encoding`](https://docs.rs/percent_encoding).
+  Uses per default [`url::Url`](https://docs.rs/url/latest/url/struct.Url.html) instead of string
+  manipulation and [`percent_encoding`](https://docs.rs/percent_encoding).
 
 
 ## Support, Issues, Contributing
@@ -200,15 +200,13 @@ let query = con
     .query()
     .set_sql_str_slice(&["SELECT COUNT(*) FROM tbl WHERE col = ?", "test"]);
 
-let result = response::query::Query::try_from(query.request_run().unwrap());
+let response_result = response::query::Query::from(query.request_run().unwrap());
 
-if let Ok(response) = result {
-    if let Some(Mapping::Standard(success)) = response.results().next() {
-        let row = 0;
-        let col = 0;
-        if let Some(rows_found) = &success.value(row, col) {
-            println!("tbl has {rows_found} row(s)");
-        }
+if let Some(Mapping::Standard(success)) = response_result.results().next() {
+    let row = 0;
+    let col = 0;
+    if let Some(rows_found) = &success.value(row, col) {
+        println!("tbl has {rows_found} row(s)");
     }
 }
 ```
@@ -242,12 +240,10 @@ let query = con
     .execute()
     .push_sql_str_slice(&["INSERT INTO tbl (col) VALUES (?)", "test"]);
 
-let result = response::query::Query::try_from(query.request_run().unwrap());
+let response_result = response::query::Query::from(query.request_run().unwrap());
 
-if let Ok(response) = result {
-    if let Some(Mapping::Execute(success)) = response.results().next() {
-        println!("last inserted primary key {}", success.last_insert_id);
-    }
+if let Some(Mapping::Execute(success)) = response_result.results().next() {
+    println!("last inserted primary key {}", success.last_insert_id);
 }
 ```
 
@@ -256,8 +252,8 @@ See [`Query`](https://docs.rs/rqlite_client/latest/rqlite_client/struct.Query.ht
 
 ## Current version
 
-[Source https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.15](https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.15)  
-[Download https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.15](https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.15)
+[Source https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.16](https://github.com/kolbma/rs_rqlite_client/tree/v0.0.1-alpha.16)  
+[Download https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.16](https://github.com/kolbma/rs_rqlite_client/releases/tag/v0.0.1-alpha.16)
 
 ## License
 

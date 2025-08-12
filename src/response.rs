@@ -12,17 +12,17 @@ pub type Result = std::result::Result<Response, Error>;
 /// [`Response`] `enum` for handling different __rqlited__ database server responses
 #[derive(Debug, PartialEq)]
 pub enum Response {
-    /// Response of [monitor::Endpoint::Nodes](crate::monitor::response::Nodes) (feature `monitor`)
+    /// Response of [`monitor::Endpoint::Nodes`](crate::monitor::response::Nodes) (feature `monitor`)
     #[cfg(feature = "monitor")]
     Node(crate::monitor::response::Nodes),
-    /// Response of [monitor::Endpoint::Readyz](crate::monitor::response::Readyz) (feature `monitor`)
+    /// Response of [`monitor::Endpoint::Readyz`](crate::monitor::response::Readyz) (feature `monitor`)
     #[cfg(feature = "monitor")]
     Readyz(crate::monitor::response::Readyz),
-    /// Response of [query::Endpoint::Execute](crate::query::Endpoint::Execute),
-    /// [query::Endpoint::Query](crate::query::Endpoint::Query),
-    /// [query::Endpoint::Request](crate::query::Endpoint::Request)
+    /// Response of [`query::Endpoint::Execute`](crate::query::Endpoint::Execute),
+    /// [`query::Endpoint::Query`](crate::query::Endpoint::Query),
+    /// [`query::Endpoint::Request`](crate::query::Endpoint::Request)
     Query(Query),
-    /// Response of [monitor::Endpoint::Status](crate::monitor::response::Status) (feature `monitor`)
+    /// Response of [`monitor::Endpoint::Status`](crate::monitor::response::Status) (feature `monitor`)
     #[cfg(feature = "monitor")]
     Status(crate::monitor::response::Status),
 }
@@ -73,6 +73,10 @@ impl TryFrom<ureq::Response> for Response {
                 serde_json::from_value::<crate::monitor::response::Status>(value)
                     .map(Response::Status)
                     .map_err(Error::from)
+            } else if value.get("nodes").is_some() {
+                serde_json::from_value::<crate::monitor::response::NodesV2>(value)
+                    .map(|nodes_v2| Response::Node(crate::monitor::response::Nodes::from(nodes_v2)))
+                    .map_err(Error::from)
             } else if value.is_object() {
                 serde_json::from_value::<crate::monitor::response::Nodes>(value)
                     .map(Response::Node)
@@ -121,6 +125,16 @@ impl From<Response> for crate::monitor::response::Nodes {
     fn from(response: Response) -> Self {
         match response {
             Response::Node(r) => r,
+            _ => panic!("not matching"),
+        }
+    }
+}
+
+#[cfg(feature = "monitor")]
+impl From<Response> for crate::monitor::response::NodesV2 {
+    fn from(response: Response) -> Self {
+        match response {
+            Response::Node(r) => r.into(),
             _ => panic!("not matching"),
         }
     }
