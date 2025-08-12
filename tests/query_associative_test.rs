@@ -1,4 +1,4 @@
-#![allow(unused_crate_dependencies)]
+#![allow(missing_docs, unused_crate_dependencies)]
 #![cfg(all(feature = "migration", feature = "ureq"))]
 
 use std::collections::HashMap;
