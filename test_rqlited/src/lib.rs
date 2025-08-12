@@ -100,7 +100,14 @@ impl TestRqlited {
     }
 
     fn start() -> Child {
-        let data_dir = env::var("OUT_DIR").unwrap().to_string() + "/rqlite_data";
+        let out_dir = env::var("OUT_DIR")
+            .unwrap_or_else(|_| {
+                let d = env::current_exe().unwrap().to_string_lossy().to_string() + "-rqlite";
+                let _ = std::fs::create_dir(&d);
+                d
+            })
+            .to_string();
+        let data_dir = out_dir.clone() + "/rqlite_data";
 
         let is_redirect_output = !["0", "off", "no"].contains(
             &std::env::var("RQLITED_REDIRECT_OUTPUT")
@@ -111,7 +118,7 @@ impl TestRqlited {
         );
 
         if is_redirect_output {
-            let stdout_file = env::var("OUT_DIR").unwrap().to_string() + "/rqlited_stdout.log";
+            let stdout_file = out_dir.clone() + "/rqlited_stdout.log";
             let stdout = OpenOptions::new()
                 .append(true)
                 .create(true)
@@ -119,7 +126,7 @@ impl TestRqlited {
                 .unwrap();
             let _ = writeln!(std::io::stdout(), "rqlited stdout: {stdout_file}");
 
-            let stderr_file = env::var("OUT_DIR").unwrap().to_string() + "/rqlited_stderr.log";
+            let stderr_file = out_dir + "/rqlited_stderr.log";
             let stderr = OpenOptions::new()
                 .append(true)
                 .create(true)
