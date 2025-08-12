@@ -9,10 +9,6 @@ arch="$(uname -i)"
 github_arch="$arch"
 [ "$github_arch" = "x86_64" ] && github_arch="amd64"
 
-sys="$(uname -s | tr 'A-Z' 'a-z')"
-
-filename="rqlite-$version-$sys-$github_arch.tar.gz"
-
 install_dir="$script_dir/$arch"
 
 [ "${install_dir#$script_dir}" = "$install_dir" ] && {
