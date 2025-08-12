@@ -126,9 +126,9 @@ impl Connection {
     ///
     #[must_use]
     #[inline]
-    pub fn execute(&self) -> Query<state::NoLevelMulti> {
-        log::debug!("query[execute]: {:?}", self);
-        tracing::debug!("query[execute]: {:?}", self);
+    pub fn execute(&self) -> Query<'_, state::NoLevelMulti> {
+        log::debug!("query[execute]: {self:?}");
+        tracing::debug!("query[execute]: {self:?}");
 
         Query::new(self)
             .set_endpoint(Endpoint::Execute)
@@ -142,9 +142,9 @@ impl Connection {
     ///
     #[must_use]
     #[inline]
-    pub fn execute_queue(&self) -> Query<state::NoLevelMulti> {
-        log::debug!("query[queue]: {:?}", self);
-        tracing::debug!("query[queue]: {:?}", self);
+    pub fn execute_queue(&self) -> Query<'_, state::NoLevelMulti> {
+        log::debug!("query[queue]: {self:?}");
+        tracing::debug!("query[queue]: {self:?}");
 
         Query::new(self)
             .set_endpoint(Endpoint::Execute)
@@ -162,9 +162,9 @@ impl Connection {
     #[cfg(feature = "monitor")]
     #[must_use]
     #[inline]
-    pub fn monitor(&self) -> Query<crate::monitor::Monitor> {
-        log::debug!("monitor: {:?}", self);
-        tracing::debug!("monitor: {:?}", self);
+    pub fn monitor(&self) -> Query<'_, crate::monitor::Monitor> {
+        log::debug!("monitor: {self:?}");
+        tracing::debug!("monitor: {self:?}");
 
         Query::new(self).monitor()
     }
@@ -172,16 +172,16 @@ impl Connection {
     /// Get proxy
     #[must_use]
     #[inline]
-    pub fn proxy(&self) -> Option<&str> {
+    pub fn proxy(&'_ self) -> Option<&str> {
         self.proxy.as_deref()
     }
 
     /// Retrieve `Query` instance for queries with read capability (_SELECT_ statements)
     #[must_use]
     #[inline]
-    pub fn query(&self) -> Query<state::NoLevel> {
-        log::debug!("query: {:?}", self);
-        tracing::debug!("query: {:?}", self);
+    pub fn query(&self) -> Query<'_, state::NoLevel> {
+        log::debug!("query: {self:?}");
+        tracing::debug!("query: {self:?}");
 
         Query::new(self)
     }
@@ -192,9 +192,9 @@ impl Connection {
     ///
     #[must_use]
     #[inline]
-    pub fn request(&self) -> Query<state::NoLevelMulti> {
-        log::debug!("query[request]: {:?}", self);
-        tracing::debug!("query[request]: {:?}", self);
+    pub fn request(&self) -> Query<'_, state::NoLevelMulti> {
+        log::debug!("query[request]: {self:?}");
+        tracing::debug!("query[request]: {self:?}");
 
         Query::new(self)
             .set_endpoint(Endpoint::Request)
