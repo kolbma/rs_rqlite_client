@@ -39,13 +39,12 @@ mod timed;
 /// let response_result: Option<Result> = None;
 ///
 /// if let Some(Ok(response_result)) = response_result {
-///     if let Ok(query) = response::Query::try_from(response_result) {
-///         for result in query.results() {
-///             match result {
-///                 Mapping::Error(err) => err.to_string(),
-///                 _ => "no error".to_string(),
-///             };
-///         }
+///     let query = response::Query::from(response_result);
+///     for result in query.results() {
+///         match result {
+///             Mapping::Error(err) => err.to_string(),
+///             _ => "no error".to_string(),
+///         };
 ///     }
 /// }
 /// ```
@@ -80,12 +79,11 @@ mod timed;
 /// let response_result: Option<Result> = None;
 ///
 /// if let Some(Ok(response_result)) = response_result {
-///     if let Ok(query) = response::Query::try_from(response_result) {
-///         let my_data = query
-///             .results()
-///             .filter_map(|r| MyData::try_from(r).ok())
-///             .collect::<Vec<MyData>>();
-///     }
+///     let query = response::Query::from(response_result);
+///     let my_data = query
+///         .results()
+///         .filter_map(|r| MyData::try_from(r).ok())
+///         .collect::<Vec<MyData>>();
 /// }
 /// ```
 ///
