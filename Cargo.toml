@@ -1,6 +1,6 @@
 [package]
 name = "rqlite_client"
-version = "0.0.1-alpha.15"
+version = "0.0.1-alpha.16"
 authors = ["Markus Kolb"]
 description = "rqlite database client with optional extra convenience"
 documentation = "https://docs.rs/rqlite_client/"
@@ -8,7 +8,7 @@ homepage = "https://github.com/kolbma/rs_rqlite_client/"
 repository = "https://github.com/kolbma/rs_rqlite_client/"
 license = "LGPL-2.1-only"
 edition = "2021"
-rust-version = "1.67.0"
+rust-version = "1.71.1"
 publish = true
 keywords = ["rqlite", "database", "sql", "migration"]
 categories = ["database"]
@@ -16,8 +16,9 @@ categories = ["database"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata]
-# minimum supported rust version 1.67.0 - crate time dependency
-msrv = "1.67.0"
+# minimum supported rust version 1.71.1 - crate ureq dependency with: cargo update -p idna_adapter --precise 1.1.0
+msrv = "1.71.1"
+unused-deps.allow = ["idna_adapter"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -26,10 +27,11 @@ all-features = true
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-lazy_static = { version = "1.4.0" }
-log = { version = "0.4.20", optional = true }
+# idna_adapter = { version = "=1.1.0", optional = true }
+lazy_static = { version = "1.5.0" }
+log = { version = "0.4.27", optional = true }
 percent-encoding = { version = "2.3.1", default-features = false, optional = true }
-ureq = { git = "https://github.com/kolbma/ureq.git", branch = "no_hootbin", version = "2.9.5", features = [
+ureq = { git = "https://github.com/kolbma/ureq.git", branch = "2.x", version = "2.12.1", features = [
     "gzip",
     "json",
 ], optional = true }
@@ -37,20 +39,23 @@ ureq = { git = "https://github.com/kolbma/ureq.git", branch = "no_hootbin", vers
 #     "gzip",
 #     "json",
 # ], optional = true }
-rust-embed = { version = "8.2.0", features = ["compression"], optional = true }
-serde = { version = "1.0.196", default-features = false, features = [
+rust-embed = { version = "8.7.2", features = ["compression"], optional = true }
+serde = { version = "1.0.219", default-features = false, features = [
     "serde_derive",
 ] }
-serde_json = { version = "1.0.113" }
-tracing = { version = "0.1.40", optional = true }
-url = { version = "2.5.0", optional = true }
+serde_json = { version = "1.0.142" }
+tracing = { version = "0.1.41", optional = true }
+url = { version = "2.5.4", optional = true }
 
 [dev-dependencies]
 test_rqlited = { path = "./test_rqlited", features = ["url"] }
-time = { version = "0.3.34", features = ["formatting"] }
+time = { version = "0.3.41", features = ["formatting"] }
 
 [build-dependencies]
 httpdate = { version = "1.0.3" }
+
+[patch.crates-io]
+idna_adapter = { git = "https://github.com/hsivonen/idna_adapter", branch = "unicode-rs" }
 
 [features]
 default = ["monitor", "ureq", "url"]
