@@ -63,6 +63,8 @@ pub struct NodeState {
     pub leader: bool,
     pub reachable: bool,
     pub time: f64,
+    pub version: String,
+    pub voter: bool,
 }
 
 impl Timed for NodeState {

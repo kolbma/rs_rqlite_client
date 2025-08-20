@@ -17,6 +17,12 @@ fn monitor_nodes_test() {
         assert!(node.leader);
         assert!(node.reachable);
         assert_eq!(node.api_addr, TEST_RQLITED_DB_URL);
+        assert!(
+            node.version.starts_with("v8."),
+            "node.version = {}",
+            node.version
+        );
+        assert!(node.voter);
     });
 }
 
@@ -33,5 +39,11 @@ fn monitor_nodes_ver2_test() {
         assert!(node.leader);
         assert!(node.reachable);
         assert_eq!(node.api_addr, TEST_RQLITED_DB_URL);
+        assert!(
+            node.version.starts_with("v8."),
+            "node.version = {}",
+            node.version
+        );
+        assert!(node.voter);
     });
 }
