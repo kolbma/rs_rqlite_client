@@ -3,7 +3,7 @@
 PATH="/usr/local/bin:/usr/bin:/bin"
 
 version="$1"
-[ -n "$version" ] || version="v8.43.2"
+[ -n "$version" ] || version="v8.43.3"
 
 arch="$2"
 [ -n "$arch" ] || arch="$(uname -i)"
