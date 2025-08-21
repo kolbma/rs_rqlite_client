@@ -320,7 +320,10 @@ mod tests {
             _ => unreachable!(),
         }
         match results.next().unwrap() {
-            Mapping::Execute(_) => {}
+            Mapping::Execute(execute) => {
+                assert_eq!(execute.last_insert_id, 2);
+                assert!(execute.rows.is_none());
+            }
             _ => unreachable!(),
         }
         match results.next().unwrap() {
