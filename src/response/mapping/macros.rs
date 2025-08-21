@@ -194,8 +194,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "unimplemented in map_deserialized_matcher macro")]
-    #[ignore]
+    #[should_panic(expected = "not implemented: map_deserialized_matcher execute mapping")]
+    #[ignore = "execute results need not to be deserialized to structures"]
     fn map_deserialized_execute_test() {
         let m = Mapping::Execute(mapping::Execute {
             last_insert_id: 0,

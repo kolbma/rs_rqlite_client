@@ -22,7 +22,7 @@ macro_rules! map_deserialized_matcher {
             }
             $crate::response::mapping::Mapping::Error(err) => Err((err.error.as_str()).into()),
             $crate::response::mapping::Mapping::Execute(_) => {
-                std::unimplemented!("execute mapping")
+                std::unimplemented!("map_deserialized_matcher execute mapping")
             }
             $crate::response::mapping::Mapping::Standard(standard) => {
                 let mut associative = $crate::response::mapping::Associative::from(standard);
