@@ -7,18 +7,15 @@ use std::{
     process::{Child, Command},
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, LazyLock, Mutex, RwLock,
     },
     time::Duration,
 };
 
-use lazy_static::lazy_static;
 use rqlite_client::{Connection, Response};
 
-lazy_static! {
-    pub static ref TEST_RQLITED_DB: TestRqlited = TestRqlited::new();
-    pub static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-}
+pub static TEST_RQLITED_DB: LazyLock<TestRqlited> = LazyLock::new(|| TestRqlited::new());
+pub static LOCK: LazyLock<Arc<Mutex<()>>> = LazyLock::new(|| Arc::new(Mutex::new(())));
 
 pub const TEST_RQLITED_DB_URL: &str = "http://localhost:4001";
 
@@ -52,7 +49,10 @@ impl TestRqlited {
         );
 
         let is_rqlited_start = if is_rqlited_start {
-            let c = Connection::new(TEST_RQLITED_DB_URL).unwrap();
+            let c = Connection::new(TEST_RQLITED_DB_URL);
+            #[cfg(feature = "url")]
+            let c = c.unwrap();
+
             if let Ok(Response::Readyz(r)) = c
                 .monitor()
                 .readyz()
@@ -194,5 +194,39 @@ impl Default for TestRqlited {
 impl Drop for TestRqlited {
     fn drop(&mut self) {
         self.stop().expect("rqlited stopped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        sync::atomic::{AtomicU32, Ordering},
+        sync::Arc,
+        thread,
+    };
+
+    use super::lock;
+
+    #[test]
+    fn lock_test() {
+        let t = Arc::new(AtomicU32::default());
+
+        for _ in 0..20 {
+            let t_clone = Arc::clone(&t);
+
+            lock!({
+                t.store(5, Ordering::Relaxed);
+            });
+
+            let j = thread::spawn(move || {
+                lock!({
+                    t_clone.store(1, Ordering::Relaxed);
+                });
+            });
+
+            let _ = j.join().unwrap();
+
+            assert_eq!(t.load(Ordering::Relaxed), 1);
+        }
     }
 }
