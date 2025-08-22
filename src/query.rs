@@ -269,6 +269,17 @@ where
         }
     }
 
+    /// Run `Request` for `Query`
+    ///
+    /// # Errors
+    ///
+    /// [Error](crate::Error) on failing [Request](crate::request::Request) run
+    ///
+    #[cfg(not(feature = "ureq"))]
+    pub fn request_run(&self) -> crate::response::Result {
+        Err(crate::Error::ResultError("not implemented".to_string()))
+    }
+
     /// Check for associative `Query`
     ///
     /// See <https://rqlite.io/docs/api/api/#associative-response-form>
@@ -1211,9 +1222,7 @@ impl<'a> Query<'a, crate::monitor::Monitor> {
 #[cfg(test)]
 #[cfg(any(feature = "percent_encoding", feature = "url"))]
 mod tests {
-    use std::time::Duration;
-
-    use lazy_static::lazy_static;
+    use std::{sync::OnceLock, time::Duration};
 
     use crate::{query::Endpoint, varparam, Connection, Value};
 
@@ -1221,18 +1230,22 @@ mod tests {
 
     const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
 
-    #[cfg(feature = "url")]
-    lazy_static! {
-        static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-    }
-    #[cfg(not(feature = "url"))]
-    lazy_static! {
-        static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
+    static TEST_CONNECTION: OnceLock<Connection> = OnceLock::new();
+
+    fn test_connection() -> &'static Connection {
+        TEST_CONNECTION.get_or_init(|| {
+            #[cfg(feature = "url")]
+            let c = Connection::new(TEST_CONNECTION_URL).unwrap();
+            #[cfg(not(feature = "url"))]
+            let c = Connection::new(TEST_CONNECTION_URL);
+
+            c
+        })
     }
 
     #[test]
     fn set_sql_str_test() {
-        let q = Query::new(&TEST_CONNECTION).set_sql_str("SELECT 1");
+        let q = Query::new(test_connection()).set_sql_str("SELECT 1");
         #[cfg(feature = "url")]
         assert_eq!(&q.create_url_query(), "q=SELECT 1");
         #[cfg(not(feature = "url"))]
@@ -1249,7 +1262,7 @@ mod tests {
 
     #[test]
     fn set_sql_values_test() {
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .set_sql_values(&varparam!["SELECT COUNT(*) FROM test WHERE id = ?", 999]);
         #[cfg(feature = "url")]
         assert_eq!(&q.create_url_query(), "");
@@ -1263,7 +1276,7 @@ mod tests {
             "[[\"SELECT COUNT(*) FROM test WHERE id = ?\",999]]"
         );
 
-        let q = Query::new(&TEST_CONNECTION).set_sql_values(&[
+        let q = Query::new(test_connection()).set_sql_values(&[
             "SELECT COUNT(*) FROM test WHERE id = ? or id = ?",
             "111",
             "222",
@@ -1283,7 +1296,7 @@ mod tests {
 
     #[test]
     fn set_sql_values_escape_test() {
-        let q = Query::new(&TEST_CONNECTION).set_sql_values(&[
+        let q = Query::new(test_connection()).set_sql_values(&[
             "SELECT COUNT(*) FROM test WHERE id = ? or id = ?",
             "1\"; SELECT * FROM secret; SELECT * FROM test WHERE id = 1",
             "222",
@@ -1311,11 +1324,11 @@ mod tests {
 
     #[test]
     fn nolevel_test() {
-        let q = Query::new(&TEST_CONNECTION);
+        let q = Query::new(test_connection());
         assert_eq!(&q.create_path_with_query(), "/db/query");
         assert!(q.sql().is_empty());
 
-        let q = Query::new(&TEST_CONNECTION).set_sql_str("SELECT 1");
+        let q = Query::new(test_connection()).set_sql_str("SELECT 1");
         #[cfg(feature = "url")]
         assert_eq!(&q.create_url_query(), "q=SELECT 1");
         #[cfg(not(feature = "url"))]
@@ -1326,19 +1339,19 @@ mod tests {
     #[test]
     fn nolevelmulti_params_test() {
         let s = "SELECT 1";
-        let q = Query::new(&TEST_CONNECTION).set_sql_str(s);
+        let q = Query::new(test_connection()).set_sql_str(s);
         assert_eq!(&q.create_path_with_query(), "/db/query?q=SELECT%201");
         assert_eq!(q.sql().len(), 1);
         assert_eq!(q.sql()[0].as_str().unwrap(), s);
 
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .push_sql(serde_json::from_str("[\"SELECT ?\", 1]").expect("array"));
         assert_eq!(&q.create_path_with_query(), "/db/query");
         assert_eq!(q.sql().len(), 1);
         assert_eq!(&format!("{}", q.sql()[0]), "[\"SELECT ?\",1]");
 
         let mut q =
-            Query::new(&TEST_CONNECTION).push_sql(Value::Array(vec!["SELECT ?".into(), 1.into()]));
+            Query::new(test_connection()).push_sql(Value::Array(vec!["SELECT ?".into(), 1.into()]));
         assert_eq!(&q.create_path_with_query(), "/db/query");
         assert_eq!(q.sql().len(), 1);
         assert_eq!(&format!("{}", q.sql()[0]), "[\"SELECT ?\",1]");
@@ -1352,7 +1365,7 @@ mod tests {
         assert_eq!(&format!("{}", q.sql()[1]), "[\"SELECT ?\",2]");
         assert_eq!(&format!("{}", q.sql()[2]), "[\"SELECT 3\"]");
 
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .push_sql(vec![Value::String("SELECT ?".into()), 4.into()].into());
         assert_eq!(&q.create_path_with_query(), "/db/query");
         assert_eq!(q.sql().len(), 1);
@@ -1361,7 +1374,7 @@ mod tests {
 
     #[test]
     fn queued_write_test() {
-        let mut q = Query::new(&TEST_CONNECTION)
+        let mut q = Query::new(test_connection())
             .set_endpoint(Endpoint::Execute)
             .push_sql_str("CREATE TEMP TABLE test (val TEXT)")
             .push_sql_str("INSERT INTO temp.test (val) VALUES ('sample')")
@@ -1381,14 +1394,14 @@ mod tests {
 
     #[test]
     fn none_test() {
-        let q = Query::new(&TEST_CONNECTION).set_none();
+        let q = Query::new(test_connection()).set_none();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?level=none");
     }
 
     #[test]
     fn none_freshness_test() {
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .set_none()
             .set_freshness(Duration::from_secs(1));
         let path = q.create_path_with_query();
@@ -1397,18 +1410,18 @@ mod tests {
 
     #[test]
     fn none_pretty_test() {
-        let q = Query::new(&TEST_CONNECTION).set_none().set_pretty();
+        let q = Query::new(test_connection()).set_none().set_pretty();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?pretty&level=none");
 
-        let q = Query::new(&TEST_CONNECTION).set_pretty().set_none();
+        let q = Query::new(test_connection()).set_pretty().set_none();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?pretty&level=none");
     }
 
     #[test]
     fn none_associative_freshness_pretty_timing_test() {
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .set_associative()
             .set_pretty()
             .set_none()
@@ -1423,46 +1436,46 @@ mod tests {
 
     #[test]
     fn strong_test() {
-        let q = Query::new(&TEST_CONNECTION).set_strong();
+        let q = Query::new(test_connection()).set_strong();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?level=strong");
     }
 
     #[test]
     fn strong_associative_test() {
-        let q = Query::new(&TEST_CONNECTION).set_strong().set_associative();
+        let q = Query::new(test_connection()).set_strong().set_associative();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?associative&level=strong");
 
-        let q = Query::new(&TEST_CONNECTION).set_associative().set_strong();
+        let q = Query::new(test_connection()).set_associative().set_strong();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?associative&level=strong");
     }
 
     #[test]
     fn redirect_test() {
-        let q = Query::new(&TEST_CONNECTION).disable_redirect();
+        let q = Query::new(test_connection()).disable_redirect();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?redirect");
     }
 
     #[test]
     fn weak_test() {
-        let q = Query::new(&TEST_CONNECTION).set_weak();
+        let q = Query::new(test_connection()).set_weak();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?level=weak");
     }
 
     #[test]
     fn weak_timing_test() {
-        let q = Query::new(&TEST_CONNECTION).set_timing().set_weak();
+        let q = Query::new(test_connection()).set_timing().set_weak();
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?timing&level=weak");
     }
 
     #[test]
     fn weak_timing_transaction_test() {
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .set_timing()
             .set_weak()
             .push_sql_str("")
@@ -1470,7 +1483,7 @@ mod tests {
         let path = q.create_path_with_query();
         assert_eq!(&path, "/db/query?timing&level=weak");
 
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .set_timing()
             .set_weak()
             .push_sql_str("")
@@ -1482,7 +1495,7 @@ mod tests {
 
     #[test]
     fn weak_associative_pretty_timing_test() {
-        let q = Query::new(&TEST_CONNECTION)
+        let q = Query::new(test_connection())
             .set_associative()
             .set_pretty()
             .set_timing()
