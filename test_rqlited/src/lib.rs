@@ -7,22 +7,27 @@ use std::{
     process::{Child, Command},
     sync::{
         atomic::{AtomicBool, AtomicU8, Ordering},
-        Arc, LazyLock, Mutex, RwLock,
+        Arc, Mutex, OnceLock, RwLock,
     },
     time::Duration,
 };
 
 use rqlite_client::{Connection, Response};
 
-pub static TEST_RQLITED_DB: LazyLock<TestRqlited> = LazyLock::new(|| TestRqlited::new());
-pub static LOCK: LazyLock<Arc<Mutex<()>>> = LazyLock::new(|| Arc::new(Mutex::new(())));
+pub static TEST_RQLITED_DB: OnceLock<TestRqlited> = OnceLock::new();
+// LazyLock<TestRqlited> = LazyLock::new(|| TestRqlited::new());
+pub static LOCK: OnceLock<Arc<Mutex<()>>> = OnceLock::new();
+// LazyLock::new(|| Arc::new(Mutex::new(())));
 
 pub const TEST_RQLITED_DB_URL: &str = "http://localhost:4001";
 
 #[macro_export]
 macro_rules! lock {
     ( $c:block ) => {{
-        if let Ok(_locked) = $crate::LOCK.lock() {
+        if let Ok(_locked) = $crate::LOCK
+            .get_or_init(|| std::sync::Arc::new(std::sync::Mutex::new(())))
+            .lock()
+        {
             $c
         } else {
             unreachable!("lock failed");
@@ -38,6 +43,11 @@ pub struct TestRqlited {
 }
 
 impl TestRqlited {
+    #[must_use]
+    pub fn get_or_init() -> &'static Self {
+        TEST_RQLITED_DB.get_or_init(|| Self::new())
+    }
+
     #[must_use]
     pub fn new() -> Self {
         let is_rqlited_start = !["0", "off", "no"].contains(
