@@ -65,6 +65,7 @@ where
     is_nonvoters: bool,
     is_pretty: bool,
     is_queue: bool,
+    is_raft_index: bool,
     is_redirect: bool,
     pub(crate) is_sync: bool,
     is_timing: bool,
@@ -105,6 +106,8 @@ where
     ///
     /// See also [`Query::set_db_timeout`]
     ///
+    #[must_use]
+    #[inline]
     pub fn db_timeout(&self) -> Option<&Timeout> {
         self.db_timeout.as_ref()
     }
@@ -187,6 +190,16 @@ where
     #[inline]
     pub fn is_queue(&self) -> bool {
         self.is_queue
+    }
+
+    /// Tracking raft indexes
+    ///
+    /// See <https://rqlite.io/docs/api/api/#tracking-raft-indexes>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn is_raft_index(&self) -> bool {
+        self.is_raft_index
     }
 
     /// Check for automatic redirect forwarding [[default: true]]
@@ -361,6 +374,23 @@ where
         }
     }
 
+    /// Enable tracking raft indexes
+    ///
+    /// See <https://rqlite.io/docs/api/api/#tracking-raft-indexes>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn set_raft_index(mut self) -> Self {
+        if self.is_raft_index {
+            self
+        } else {
+            self.is_raft_index = true;
+            log::trace!("is_raft_index: {}", self.is_raft_index);
+            tracing::trace!("is_raft_index: {}", self.is_raft_index);
+            self.url_modified()
+        }
+    }
+
     /// Set `timeout` for `Query` response
     ///
     /// See <https://rqlite.io/docs/api/api/#request-forwarding-timeouts>
@@ -449,6 +479,19 @@ where
 
         if self.is_queue {
             query_args.push("queue".to_string());
+        }
+
+        if self.is_raft_index {
+            if self.endpoint == Endpoint::Execute {
+                query_args.push("raft_index".to_string());
+            } else {
+                log::warn!(
+                    "Query::endpoint not Endpoint::Execute and meaningless raft_index enabled"
+                );
+                tracing::warn!(
+                    "Query::endpoint not Endpoint::Execute and meaningless raft_index enabled"
+                );
+            }
         }
 
         if !self.is_redirect {
@@ -848,6 +891,7 @@ where
         is_nonvoters: src.is_nonvoters,
         is_pretty: src.is_pretty,
         is_queue: src.is_queue,
+        is_raft_index: src.is_raft_index,
         is_redirect: src.is_redirect,
         is_sync: src.is_sync,
         is_timing: src.is_timing,
@@ -1370,6 +1414,7 @@ impl<'a> Query<'a, state::NoLevel> {
             is_nonvoters: false,
             is_pretty: false,
             is_queue: false,
+            is_raft_index: false,
             is_redirect: true,
             is_sync: false,
             is_timing: false,

@@ -15,6 +15,12 @@ pub type Result = std::result::Result<Query, Error>;
 ///
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Query {
+    /// `raft_index` in raft index log
+    ///
+    /// See <https://rqlite.io/docs/api/api/#tracking-raft-indexes>
+    ///
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raft_index: Option<u64>,
     /// query results
     results: Vec<Mapping>,
     /// `sequence_number` of queued writes
@@ -37,6 +43,15 @@ impl Query {
     /// Iterator for available [`Result`]s
     pub fn iter(&self) -> std::slice::Iter<'_, Mapping> {
         self.results.iter()
+    }
+
+    /// `raft_index` in raft index log
+    ///
+    /// See <https://rqlite.io/docs/api/api/#tracking-raft-indexes>
+    ///
+    #[must_use]
+    pub fn raft_index(&self) -> Option<u64> {
+        self.raft_index
     }
 
     /// Iterator for available [`Result`]s
@@ -110,6 +125,7 @@ mod tests {
     #[test]
     fn response_associative_json_test() {
         let r = Query {
+            raft_index: None,
             results: vec![Mapping::Associative(Associative {
                 rows: Vec::new(),
                 time: None,
@@ -141,6 +157,7 @@ mod tests {
     #[test]
     fn response_standard_json_test() {
         let r = Query {
+            raft_index: None,
             results: vec![Mapping::Standard(Standard {
                 time: None,
                 types: Vec::new(),
@@ -170,6 +187,7 @@ mod tests {
     #[test]
     fn response_standard_data_type_json_test() {
         let r = Query {
+            raft_index: None,
             results: vec![Mapping::Standard(Standard {
                 time: None,
                 types: vec![DataType::Integer, DataType::Text],
@@ -261,6 +279,32 @@ mod tests {
     }
 
     #[test]
+    fn deserialize_raft_index_test() {
+        let json = r#"{
+                "results": [
+                    {
+                        "last_insert_id": 3,
+                        "rows_affected": 1
+                    }
+                ],
+                "raft_index": 6
+            }"#;
+
+        let res: Result<Query, serde_json::Error> = serde_json::from_str(json);
+
+        assert!(res.is_ok(), "error: {}", res.err().unwrap());
+        let r = res.unwrap();
+        assert_eq!(r.raft_index(), Some(6));
+        assert_eq!(r.results.len(), 1);
+        match &r.results[0] {
+            Mapping::Execute(execute) => {
+                assert_eq!(execute.last_insert_id, 3);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
     fn deserialize_standard_test() {
         let json = "{\n  \"results\": [\n    {\n      \"columns\": [],\n      \"types\": [],\n      \"values\": []\n    }\n  ]\n}";
 
@@ -268,6 +312,7 @@ mod tests {
 
         assert!(res.is_ok(), "error: {}", res.err().unwrap());
         let r = res.unwrap();
+        assert!(r.raft_index().is_none());
         assert_eq!(r.results.len(), 1);
         match &r.results[0] {
             Mapping::Standard(_) => {}
