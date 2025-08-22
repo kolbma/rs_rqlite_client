@@ -1,6 +1,6 @@
 #![allow(missing_docs, unused_crate_dependencies)]
 
-use lazy_static::lazy_static;
+use std::sync::OnceLock;
 
 use rqlite_client::{response, state, Connection, Error, Query, RequestBuilder};
 
@@ -19,18 +19,22 @@ where
 
 const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
 
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-}
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
+static TEST_CONNECTION: OnceLock<Connection> = OnceLock::new();
+
+fn test_connection() -> &'static Connection {
+    TEST_CONNECTION.get_or_init(|| {
+        #[cfg(feature = "url")]
+        let c = Connection::new(TEST_CONNECTION_URL).unwrap();
+        #[cfg(not(feature = "url"))]
+        let c = Connection::new(TEST_CONNECTION_URL);
+
+        c
+    })
 }
 
 #[test]
 fn request_test() {
-    let q = TEST_CONNECTION.query();
+    let q = test_connection().query();
     let r = ImplRequestTest {}.run(&q.set_sql_str("SELECT 1"));
 
     assert!(r.is_err());

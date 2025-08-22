@@ -24,26 +24,28 @@ impl State for Monitor {}
 #[cfg(test)]
 #[cfg(any(feature = "percent_encoding", feature = "url"))]
 mod tests {
-    use std::time::Duration;
-
-    use lazy_static::lazy_static;
+    use std::{sync::OnceLock, time::Duration};
 
     use crate::{Connection, Query};
 
     const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
 
-    #[cfg(feature = "url")]
-    lazy_static! {
-        static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-    }
-    #[cfg(not(feature = "url"))]
-    lazy_static! {
-        static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
+    static TEST_CONNECTION: OnceLock<Connection> = OnceLock::new();
+
+    fn test_connection() -> &'static Connection {
+        TEST_CONNECTION.get_or_init(|| {
+            #[cfg(feature = "url")]
+            let c = Connection::new(TEST_CONNECTION_URL).unwrap();
+            #[cfg(not(feature = "url"))]
+            let c = Connection::new(TEST_CONNECTION_URL);
+
+            c
+        })
     }
 
     #[test]
     fn monitor_status_test() {
-        let mut q = Query::new(&TEST_CONNECTION).monitor();
+        let mut q = Query::new(test_connection()).monitor();
 
         assert_eq!(&q.create_path_with_query(), "/status");
 

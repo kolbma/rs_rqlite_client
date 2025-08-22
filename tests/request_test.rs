@@ -1,9 +1,7 @@
 #![allow(missing_docs, unused_crate_dependencies)]
 #![cfg(feature = "ureq")]
 
-use std::time::Duration;
-
-use lazy_static::lazy_static;
+use std::{sync::OnceLock, time::Duration};
 
 use test_rqlited::{TEST_RQLITED_DB, TEST_RQLITED_DB_URL};
 
@@ -19,22 +17,35 @@ use rqlite_client::{
 const TEST_PROXY_URL: &str = "http://proxy.example.com:12345";
 const TEST_SOCKS_PROXY_URL: &str = "socks5://user:password@127.0.0.1:12345";
 
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_PROXY_CONNECTION: Connection = Connection::new(TEST_RQLITED_DB_URL)
-        .unwrap()
-        .set_proxy(TEST_PROXY_URL);
-    static ref TEST_SOCKS_PROXY_CONNECTION: Connection = Connection::new(TEST_RQLITED_DB_URL)
-        .unwrap()
-        .set_proxy(TEST_SOCKS_PROXY_URL);
+static TEST_PROXY_CONNECTION: OnceLock<Connection> = OnceLock::new();
+static TEST_SOCKS_PROXY_CONNECTION: OnceLock<Connection> = OnceLock::new();
+
+fn get_test_proxy_connection() -> &'static Connection {
+    TEST_PROXY_CONNECTION.get_or_init(|| {
+        #[cfg(feature = "url")]
+        let c = Connection::new(TEST_RQLITED_DB_URL)
+            .unwrap()
+            .set_proxy(TEST_PROXY_URL);
+
+        #[cfg(not(feature = "url"))]
+        let c = Connection::new(TEST_RQLITED_DB_URL).set_proxy(TEST_PROXY_URL);
+
+        c
+    })
 }
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
-    static ref TEST_PROXY_CONNECTION: Connection =
-        Connection::new(TEST_CONNECTION_URL).set_proxy(TEST_PROXY_URL);
-    static ref TEST_SOCKS_PROXY_CONNECTION: Connection =
-        Connection::new(TEST_CONNECTION_URL).set_proxy(TEST_SOCKS_PROXY_URL);
+
+fn get_test_socks_proxy_connection() -> &'static Connection {
+    TEST_SOCKS_PROXY_CONNECTION.get_or_init(|| {
+        #[cfg(feature = "url")]
+        let c = Connection::new(TEST_RQLITED_DB_URL)
+            .unwrap()
+            .set_proxy(TEST_SOCKS_PROXY_URL);
+
+        #[cfg(not(feature = "url"))]
+        let c = Connection::new(TEST_RQLITED_DB_URL).set_proxy(TEST_SOCKS_PROXY_URL);
+
+        c
+    })
 }
 
 #[test]
@@ -94,8 +105,8 @@ fn nolevel_request_run_test() {
 #[test]
 fn proxy_test() {
     TEST_RQLITED_DB.run_test(|_c| {
-        let r = Request::<Get>::from(&*TEST_PROXY_CONNECTION).run(
-            &TEST_PROXY_CONNECTION
+        let r = Request::<Get>::from(get_test_proxy_connection()).run(
+            &get_test_proxy_connection()
                 .query()
                 .set_timeout_request(Duration::from_millis(10))
                 .set_sql_str("SELECT 1"),
@@ -159,8 +170,8 @@ fn request_timeout_test() {
 #[test]
 fn socks_proxy_test() {
     TEST_RQLITED_DB.run_test(|_c| {
-        let r = Request::<Get>::from(&*TEST_SOCKS_PROXY_CONNECTION).run(
-            &TEST_SOCKS_PROXY_CONNECTION
+        let r = Request::<Get>::from(get_test_socks_proxy_connection()).run(
+            &get_test_socks_proxy_connection()
                 .query()
                 .set_timeout_request(Duration::from_millis(10))
                 .set_sql_str("SELECT 1"),

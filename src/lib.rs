@@ -249,8 +249,6 @@ See [`Query`](https://docs.rs/rqlite_client/latest/rqlite_client/struct.Query.ht
 
 */
 
-#[cfg(not(feature = "ureq"))]
-use lazy_static as _;
 #[cfg(feature = "percent_encoding")]
 use percent_encoding as _;
 #[cfg(test)]

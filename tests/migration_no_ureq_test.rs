@@ -1,14 +1,11 @@
 #![allow(missing_docs, unused_crate_dependencies)]
-#![cfg(feature = "migration")]
-#![cfg(not(feature = "ureq"))]
+#![cfg(all(feature = "migration", not(feature = "ureq")))]
 
 use std::path::Path;
 
-use lazy_static::lazy_static;
-
 use rqlite_client::{
     migration::{Migration, MigrationError, SchemaVersion},
-    state, Connection, Query, RequestBuilder,
+    state, Query, RequestBuilder,
 };
 
 struct NoUreqRequest;
@@ -22,23 +19,12 @@ where
     }
 }
 
-const TEST_CONNECTION_URL: &str = "http://localhost:4001/";
-
-#[cfg(feature = "url")]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL).unwrap();
-}
-#[cfg(not(feature = "url"))]
-lazy_static! {
-    static ref TEST_CONNECTION: Connection = Connection::new(TEST_CONNECTION_URL);
-}
-
 #[test]
 fn migration_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
+    test_rqlited::TEST_RQLITED_DB.run_test(|connection| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path).set_request_builder(NoUreqRequest {});
-        let result = m.migrate(&TEST_CONNECTION);
+        let result = m.migrate(&connection);
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");
@@ -50,10 +36,10 @@ fn migration_test() {
 
 #[test]
 fn migration_to_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
+    test_rqlited::TEST_RQLITED_DB.run_test(|connection| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path).set_request_builder(NoUreqRequest {});
-        let result = m.migrate_to(&TEST_CONNECTION, Some(&SchemaVersion(u64::MAX)));
+        let result = m.migrate_to(&connection, Some(&SchemaVersion(u64::MAX)));
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");
@@ -63,7 +49,7 @@ fn migration_to_test() {
 
         let to_version = SchemaVersion(1_u64);
 
-        let result = m.migrate_to(&TEST_CONNECTION, Some(&to_version));
+        let result = m.migrate_to(&connection, Some(&to_version));
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");
@@ -75,11 +61,11 @@ fn migration_to_test() {
 
 #[test]
 fn rollback_to_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|| {
+    test_rqlited::TEST_RQLITED_DB.run_test(|connection| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path).set_request_builder(NoUreqRequest {});
 
-        let result = m.migrate(&TEST_CONNECTION);
+        let result = m.migrate(&connection);
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");
@@ -87,7 +73,7 @@ fn rollback_to_test() {
             unreachable!();
         }
 
-        let result = m.rollback_to(&TEST_CONNECTION, &SchemaVersion(u64::MAX));
+        let result = m.rollback_to(&connection, &SchemaVersion(u64::MAX));
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");
@@ -97,7 +83,7 @@ fn rollback_to_test() {
 
         let to_version = SchemaVersion(0_u64);
 
-        let result = m.rollback_to(&TEST_CONNECTION, &to_version);
+        let result = m.rollback_to(&connection, &to_version);
 
         if let Err(MigrationError::QueryFail(err)) = result {
             assert_eq!(&err, "query not implemented");

@@ -2,8 +2,7 @@
 #![cfg(feature = "ureq")]
 
 use std::marker::PhantomData;
-
-use lazy_static::lazy_static;
+use std::sync::OnceLock;
 
 #[allow(clippy::module_name_repetitions)]
 pub use self::request_type::RequestType;
@@ -63,7 +62,9 @@ where
 
 #[inline]
 pub(crate) fn user_agent(connection: Option<&Connection>) -> ureq::Agent {
-    let agent = ureq::AgentBuilder::new().user_agent(&DEFAULT_USER_AGENT);
+    let agent = ureq::AgentBuilder::new().user_agent(
+        DEFAULT_USER_AGENT.get_or_init(|| format!("rqlite_client/{}", crate::BUILD_TIME)),
+    );
 
     let proxy = connection
         .and_then(|c| {
@@ -96,15 +97,11 @@ pub(crate) fn user_agent(connection: Option<&Connection>) -> ureq::Agent {
     agent.build()
 }
 
-lazy_static! {
-    /// default HTTP User-Agent header
-    static ref DEFAULT_USER_AGENT: String = {
-        format!("rqlite_client/{}", crate::BUILD_TIME)
-    };
+/// default HTTP User-Agent header
+static DEFAULT_USER_AGENT: OnceLock<String> = OnceLock::new();
 
-    /// request agent singleton
-    static ref UREQ_AGENT: ureq::Agent = user_agent(None);
-}
+/// request agent singleton
+static UREQ_AGENT: OnceLock<ureq::Agent> = OnceLock::new();
 
 impl Request<Get> {
     fn request<T: State>(agent: Option<&ureq::Agent>, query: &Query<T>) -> Result {
@@ -114,7 +111,7 @@ impl Request<Get> {
         let agent = if let Some(agent) = agent {
             agent
         } else {
-            &UREQ_AGENT
+            UREQ_AGENT.get_or_init(|| user_agent(None))
         };
 
         let r = agent
@@ -141,7 +138,7 @@ impl Request<Post> {
         let agent = if let Some(agent) = agent {
             agent
         } else {
-            &UREQ_AGENT
+            UREQ_AGENT.get_or_init(|| user_agent(None))
         };
 
         let r = agent
