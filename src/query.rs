@@ -57,6 +57,7 @@ where
 {
     connection: &'a Connection,
     consistency_level: Option<ConsistencyLevel>,
+    db_timeout: Option<Timeout>,
     endpoint: Endpoint,
     freshness: Option<Freshness>,
     is_associative: bool,
@@ -70,6 +71,7 @@ where
     is_transaction: bool,
     is_url_modified: bool,
     is_wait: bool,
+    linearizable_timeout: Option<Timeout>,
     sql: Vec<Value>,
     state: PhantomData<T>,
     timeout: Option<Timeout>,
@@ -97,6 +99,14 @@ where
     #[inline]
     pub fn consistency_level(&self) -> Option<ConsistencyLevel> {
         self.consistency_level
+    }
+
+    /// `db_timeout` of `Query`
+    ///
+    /// See also [`Query::set_db_timeout`]
+    ///
+    pub fn db_timeout(&self) -> Option<&Timeout> {
+        self.db_timeout.as_ref()
     }
 
     /// Disable automatic redirect forwarding
@@ -297,6 +307,28 @@ where
         }
     }
 
+    /// Set `db_timeout` for `Query`
+    ///
+    /// By default, SQL queries do not timeout. You can set a timeout by setting the `db_timeout` URL parameter. This
+    /// parameter allows you to specify the maximum amount of time to spend processing the query before it is
+    /// interrupted and an error returned. Note that this timeout is applied per SQL statement, not the entire HTTP
+    /// request.
+    ///
+    /// See <https://rqlite.io/docs/api/api/#query-timeouts>
+    ///
+    #[must_use]
+    #[inline]
+    pub fn set_db_timeout(mut self, timeout: Timeout) -> Self {
+        if self.db_timeout == Some(timeout) {
+            self
+        } else {
+            self.db_timeout = Some(timeout);
+            log::trace!("db_timeout: {:?}", self.db_timeout);
+            tracing::trace!("db_timeout: {:?}", self.db_timeout);
+            self.url_modified()
+        }
+    }
+
     /// Change [`Endpoint`]
     #[must_use]
     #[inline]
@@ -338,8 +370,14 @@ where
     #[must_use]
     #[inline]
     pub fn set_timeout(mut self, timeout: Timeout) -> Self {
-        self.timeout = Some(timeout);
-        self
+        if self.timeout == Some(timeout) {
+            self
+        } else {
+            self.timeout = Some(timeout);
+            log::trace!("timeout: {:?}", self.timeout);
+            tracing::trace!("timeout: {:?}", self.timeout);
+            self.url_modified()
+        }
     }
 
     /// Set `timeout_request` for HTTP request of `Query`
@@ -388,6 +426,10 @@ where
     #[inline]
     fn create_url_query(&self) -> String {
         let mut query_args = Vec::new();
+
+        if let Some(db_timeout) = self.db_timeout {
+            query_args.push(format!("db_timeout={db_timeout}"));
+        }
 
         if self.is_associative {
             query_args.push("associative".to_string());
@@ -440,9 +482,18 @@ where
         if let Some(consistency_level) = self.consistency_level {
             if consistency_level != ConsistencyLevel::Nolevel {
                 query_args.push(format!("level={consistency_level}"));
-                if consistency_level == ConsistencyLevel::None {
+                if consistency_level == ConsistencyLevel::None
+                    || consistency_level == ConsistencyLevel::Auto
+                {
                     if let Some(freshness) = self.freshness {
                         query_args.push(format!("freshness={freshness}"));
+                        if freshness.is_strict() {
+                            query_args.push("freshness_strict".to_string());
+                        }
+                    }
+                } else if consistency_level == ConsistencyLevel::Linearizable {
+                    if let Some(linearizable_timeout) = self.linearizable_timeout {
+                        query_args.push(format!("linearizable_timeout={linearizable_timeout}"));
                     }
                 }
             }
@@ -631,6 +682,18 @@ where
     }
 
     #[inline]
+    fn set_linearizable_timeout_helper(mut self, timeout: Timeout) -> Self {
+        if self.linearizable_timeout == Some(timeout) {
+            self
+        } else {
+            self.linearizable_timeout = Some(timeout);
+            log::trace!("linearizable_timeout: {:?}", self.linearizable_timeout);
+            tracing::trace!("linearizable_timeout: {:?}", self.linearizable_timeout);
+            self.url_modified()
+        }
+    }
+
+    #[inline]
     fn set_sql_helper(mut self, sql: Value) -> Self {
         let self_sql: &mut Vec<Value> = self.sql.as_mut();
         if !self_sql.is_empty() {
@@ -777,6 +840,7 @@ where
     Query {
         connection: src.connection,
         consistency_level: Some(consistency_level),
+        db_timeout: src.db_timeout,
         endpoint: src.endpoint,
         freshness,
         is_associative: src.is_associative,
@@ -790,6 +854,7 @@ where
         is_transaction: src.is_transaction,
         is_url_modified: src.is_url_modified,
         is_wait: src.is_wait,
+        linearizable_timeout: src.linearizable_timeout,
         sql: src.sql,
         state: PhantomData,
         timeout: src.timeout,
@@ -932,6 +997,155 @@ macro_rules! gen_query_freshness {
     };
 }
 
+gen_query!(state::LevelAuto, state::LevelAutoMulti);
+gen_query_freshness!(state::LevelAuto, state::LevelAutoMulti);
+
+/// `Query<LevelAuto>`
+///
+/// See [`Query`]
+///
+impl<'a> Query<'a, state::LevelAuto> {
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizable> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
+    /// Set [`ConsistencyLevel::None`] for `Query`
+    #[must_use]
+    pub fn set_none(self) -> Query<'a, state::LevelNone> {
+        let freshness = self.freshness;
+        transition(self, ConsistencyLevel::None, freshness)
+    }
+
+    /// Set [`ConsistencyLevel::Strong`] for `Query`
+    #[must_use]
+    pub fn set_strong(self) -> Query<'a, state::LevelStrong> {
+        transition(self, ConsistencyLevel::Strong, None)
+    }
+
+    /// Set [`ConsistencyLevel::Weak`] for `Query`
+    #[must_use]
+    pub fn set_weak(self) -> Query<'a, state::LevelWeak> {
+        transition(self, ConsistencyLevel::Weak, None)
+    }
+}
+
+/// `Query<LevelAutoMulti>`
+///
+/// See [`Query`]
+///
+impl<'a> Query<'a, state::LevelAutoMulti> {
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizableMulti> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
+    /// Set [`ConsistencyLevel::None`] for `Query`
+    #[must_use]
+    pub fn set_none(self) -> Query<'a, state::LevelNoneMulti> {
+        let freshness = self.freshness;
+        transition(self, ConsistencyLevel::None, freshness)
+    }
+
+    /// Set [`ConsistencyLevel::Strong`] for `Query`
+    #[must_use]
+    pub fn set_strong(self) -> Query<'a, state::LevelStrongMulti> {
+        transition(self, ConsistencyLevel::Strong, None)
+    }
+
+    /// Set [`ConsistencyLevel::Weak`] for `Query`
+    #[must_use]
+    pub fn set_weak(self) -> Query<'a, state::LevelWeakMulti> {
+        transition(self, ConsistencyLevel::Weak, None)
+    }
+}
+
+gen_query!(state::LevelLinearizable, state::LevelLinearizableMulti);
+
+/// `Query<LevelLinearizable>`
+///
+/// See [`Query`]
+///
+impl<'a> Query<'a, state::LevelLinearizable> {
+    /// `linearizable_timeout` of `Query`
+    pub fn linearizable_timeout(&'a self) -> Option<&'a Timeout> {
+        self.linearizable_timeout.as_ref()
+    }
+
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAuto> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set `linearizable_timeout` for `Query`
+    #[must_use]
+    pub fn set_linearizable_timeout(self, timeout: Timeout) -> Self {
+        self.set_linearizable_timeout_helper(timeout)
+    }
+
+    /// Set [`ConsistencyLevel::None`] for `Query`
+    #[must_use]
+    pub fn set_none(self) -> Query<'a, state::LevelNone> {
+        transition(self, ConsistencyLevel::None, None)
+    }
+
+    /// Set [`ConsistencyLevel::Strong`] for `Query`
+    #[must_use]
+    pub fn set_strong(self) -> Query<'a, state::LevelStrong> {
+        transition(self, ConsistencyLevel::Strong, None)
+    }
+
+    /// Set [`ConsistencyLevel::Weak`] for `Query`
+    #[must_use]
+    pub fn set_weak(self) -> Query<'a, state::LevelWeak> {
+        transition(self, ConsistencyLevel::Weak, None)
+    }
+}
+
+/// `Query<LevelLinearizableMulti>`
+///
+/// See [`Query`]
+///
+impl<'a> Query<'a, state::LevelLinearizableMulti> {
+    /// `linearizable_timeout` of `Query`
+    pub fn linearizable_timeout(&'a self) -> Option<&'a Timeout> {
+        self.linearizable_timeout.as_ref()
+    }
+
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAutoMulti> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set `linearizable_timeout` for `Query`
+    #[must_use]
+    pub fn set_linearizable_timeout(self, timeout: Timeout) -> Self {
+        self.set_linearizable_timeout_helper(timeout)
+    }
+
+    /// Set [`ConsistencyLevel::None`] for `Query`
+    #[must_use]
+    pub fn set_none(self) -> Query<'a, state::LevelNoneMulti> {
+        transition(self, ConsistencyLevel::None, None)
+    }
+
+    /// Set [`ConsistencyLevel::Strong`] for `Query`
+    #[must_use]
+    pub fn set_strong(self) -> Query<'a, state::LevelStrongMulti> {
+        transition(self, ConsistencyLevel::Strong, None)
+    }
+
+    /// Set [`ConsistencyLevel::Weak`] for `Query`
+    #[must_use]
+    pub fn set_weak(self) -> Query<'a, state::LevelWeakMulti> {
+        transition(self, ConsistencyLevel::Weak, None)
+    }
+}
+
 gen_query!(state::LevelNone, state::LevelNoneMulti);
 gen_query_freshness!(state::LevelNone, state::LevelNoneMulti);
 
@@ -940,6 +1154,19 @@ gen_query_freshness!(state::LevelNone, state::LevelNoneMulti);
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::LevelNone> {
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAuto> {
+        let freshness = self.freshness;
+        transition(self, ConsistencyLevel::Auto, freshness)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizable> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
     /// Set [`ConsistencyLevel::Strong`] for `Query`
     #[must_use]
     pub fn set_strong(self) -> Query<'a, state::LevelStrong> {
@@ -958,6 +1185,19 @@ impl<'a> Query<'a, state::LevelNone> {
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::LevelNoneMulti> {
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAutoMulti> {
+        let freshness = self.freshness;
+        transition(self, ConsistencyLevel::Auto, freshness)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizableMulti> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
     /// Set [`ConsistencyLevel::Strong`] for `Query`
     #[must_use]
     pub fn set_strong(self) -> Query<'a, state::LevelStrongMulti> {
@@ -978,6 +1218,18 @@ gen_query!(state::LevelStrong, state::LevelStrongMulti);
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::LevelStrong> {
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAuto> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizable> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
     /// Set [`ConsistencyLevel::None`] for `Query`
     #[must_use]
     pub fn set_none(self) -> Query<'a, state::LevelNone> {
@@ -996,6 +1248,18 @@ impl<'a> Query<'a, state::LevelStrong> {
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::LevelStrongMulti> {
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAutoMulti> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizableMulti> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
     /// Set [`ConsistencyLevel::None`] for `Query`
     #[must_use]
     pub fn set_none(self) -> Query<'a, state::LevelNoneMulti> {
@@ -1016,6 +1280,18 @@ gen_query!(state::LevelWeak, state::LevelWeakMulti);
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::LevelWeak> {
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAuto> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizable> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
     /// Set [`ConsistencyLevel::None`] for `Query`
     #[must_use]
     pub fn set_none(self) -> Query<'a, state::LevelNone> {
@@ -1034,6 +1310,18 @@ impl<'a> Query<'a, state::LevelWeak> {
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::LevelWeakMulti> {
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAutoMulti> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizableMulti> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
     /// Set [`ConsistencyLevel::None`] for `Query`
     #[must_use]
     pub fn set_none(self) -> Query<'a, state::LevelNoneMulti> {
@@ -1074,6 +1362,7 @@ impl<'a> Query<'a, state::NoLevel> {
         Self {
             connection,
             consistency_level: Some(ConsistencyLevel::default()),
+            db_timeout: None,
             endpoint: Endpoint::default(),
             freshness: None,
             is_associative: false,
@@ -1087,6 +1376,7 @@ impl<'a> Query<'a, state::NoLevel> {
             is_transaction: false,
             is_url_modified: false,
             is_wait: false,
+            linearizable_timeout: None,
             sql: Vec::new(),
             state: PhantomData,
             timeout: None,
@@ -1094,6 +1384,18 @@ impl<'a> Query<'a, state::NoLevel> {
             url_cache: RefCell::new(None),
             version: None,
         }
+    }
+
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAuto> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizable> {
+        transition(self, ConsistencyLevel::Linearizable, None)
     }
 
     /// Set [`ConsistencyLevel::None`] for `Query`
@@ -1132,6 +1434,18 @@ impl<'a> Query<'a, state::NoLevel> {
 /// See [`Query`]
 ///
 impl<'a> Query<'a, state::NoLevelMulti> {
+    /// Set [`ConsistencyLevel::Auto`] for `Query`
+    #[must_use]
+    pub fn set_auto(self) -> Query<'a, state::LevelAutoMulti> {
+        transition(self, ConsistencyLevel::Auto, None)
+    }
+
+    /// Set [`ConsistencyLevel::Linearizable`] for `Query`
+    #[must_use]
+    pub fn set_linearizable(self) -> Query<'a, state::LevelLinearizableMulti> {
+        transition(self, ConsistencyLevel::Linearizable, None)
+    }
+
     /// Set [`ConsistencyLevel::None`] for `Query`
     #[must_use]
     pub fn set_none(self) -> Query<'a, state::LevelNoneMulti> {
@@ -1224,7 +1538,10 @@ impl<'a> Query<'a, crate::monitor::Monitor> {
 mod tests {
     use std::{sync::OnceLock, time::Duration};
 
-    use crate::{query::Endpoint, varparam, Connection, Value};
+    use crate::{
+        query::{Endpoint, Freshness},
+        varparam, Connection, Value,
+    };
 
     use super::Query;
 
@@ -1393,6 +1710,43 @@ mod tests {
     }
 
     #[test]
+    fn auto_test() {
+        let q = Query::new(test_connection()).set_auto();
+        let path = q.create_path_with_query();
+        assert_eq!(&path, "/db/query?level=auto");
+    }
+
+    #[test]
+    fn auto_freshness_test() {
+        let q = Query::new(test_connection())
+            .set_auto()
+            .set_freshness(Duration::from_secs(1));
+        let path = q.create_path_with_query();
+        assert_eq!(path, "/db/query?level=auto&freshness=1s");
+    }
+
+    #[test]
+    fn linearizable_test() {
+        let q = Query::new(test_connection()).set_linearizable();
+        let path = q.create_path_with_query();
+        assert_eq!(&path, "/db/query?level=linearizable");
+    }
+
+    #[test]
+    fn linearizable_timeout_test() {
+        let q = Query::new(test_connection())
+            .set_linearizable()
+            .set_db_timeout(Duration::from_secs(10).into())
+            .set_timeout(Duration::from_secs(3).into())
+            .set_linearizable_timeout(Duration::from_secs(5).into());
+        let path = q.create_path_with_query();
+        assert_eq!(
+            &path,
+            "/db/query?db_timeout=10s&timeout=3s&level=linearizable&linearizable_timeout=5s"
+        );
+    }
+
+    #[test]
     fn none_test() {
         let q = Query::new(test_connection()).set_none();
         let path = q.create_path_with_query();
@@ -1406,6 +1760,15 @@ mod tests {
             .set_freshness(Duration::from_secs(1));
         let path = q.create_path_with_query();
         assert_eq!(path, "/db/query?level=none&freshness=1s");
+    }
+
+    #[test]
+    fn none_freshness_strict_test() {
+        let q = Query::new(test_connection())
+            .set_none()
+            .set_freshness(Freshness::from(Duration::from_secs(1)).set_strict());
+        let path = q.create_path_with_query();
+        assert_eq!(path, "/db/query?level=none&freshness=1s&freshness_strict");
     }
 
     #[test]
@@ -1431,6 +1794,21 @@ mod tests {
         assert_eq!(
             &path,
             "/db/query?associative&pretty&timing&level=none&freshness=5ms"
+        );
+    }
+
+    #[test]
+    fn none_associative_freshness_strict_pretty_timing_test() {
+        let q = Query::new(test_connection())
+            .set_associative()
+            .set_pretty()
+            .set_none()
+            .set_timing()
+            .set_freshness(Freshness::from(Duration::from_millis(5)).set_strict());
+        let path = q.create_path_with_query();
+        assert_eq!(
+            &path,
+            "/db/query?associative&pretty&timing&level=none&freshness=5ms&freshness_strict"
         );
     }
 

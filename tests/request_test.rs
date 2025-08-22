@@ -50,7 +50,7 @@ fn get_test_socks_proxy_connection() -> &'static Connection {
 
 #[test]
 fn nolevel_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TEST_RQLITED_DB.run_test(|c: Connection| {
         let r = Request::from(Get).run(&c.query().set_sql_str("SELECT 1"));
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());

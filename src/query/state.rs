@@ -6,6 +6,26 @@
 /// Trait `State` for `Query`
 pub trait State {}
 
+/// `LevelAuto`
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LevelAuto;
+impl State for LevelAuto {}
+
+/// `LevelAutoMulti`
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LevelAutoMulti;
+impl State for LevelAutoMulti {}
+
+/// `LevelLinearizable`
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LevelLinearizable;
+impl State for LevelLinearizable {}
+
+/// `LevelLinearizableMulti`
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LevelLinearizableMulti;
+impl State for LevelLinearizableMulti {}
+
 /// `LevelNone`
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LevelNone;
