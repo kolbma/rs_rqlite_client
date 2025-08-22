@@ -17,7 +17,7 @@
 __{{license}} [LICENSE.md](LICENSE.md)__
 
 __{{crate}} - rqlite database client__  
-__Copyright (C) 2023  Markus Kolb__
+__Copyright (C) 2025  Markus Kolb__
 
 This library is free software; you can redistribute it and/or  
 modify it under the terms of the GNU Lesser General Public  

@@ -260,7 +260,7 @@ See [`Query`](https://docs.rs/rqlite_client/latest/rqlite_client/struct.Query.ht
 __LGPL-2.1-only [LICENSE.md](LICENSE.md)__
 
 __rqlite_client - rqlite database client__  
-__Copyright (C) 2023  Markus Kolb__
+__Copyright (C) 2025  Markus Kolb__
 
 This library is free software; you can redistribute it and/or  
 modify it under the terms of the GNU Lesser General Public  
