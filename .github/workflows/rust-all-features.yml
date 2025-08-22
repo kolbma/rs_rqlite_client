@@ -32,7 +32,7 @@ jobs:
       with:
         toolchain: stable
     - name: Run sccache-cache
-      uses: mozilla-actions/sccache-action@v0.0.3
+      uses: mozilla-actions/sccache-action@v0.0.9
     - uses: actions/checkout@v4
     - run: ./rqlite/install.sh
     - run: |
@@ -58,7 +58,7 @@ jobs:
         toolchain: ${{ env.RUST_MSRV_TOOLCHAIN }}
         components: clippy
     - name: Run sccache-cache
-      uses: mozilla-actions/sccache-action@v0.0.3
+      uses: mozilla-actions/sccache-action@v0.0.9
     - uses: actions/checkout@v4
     - run: ./rqlite/install.sh
     - run: |
