@@ -10,12 +10,12 @@ use rqlite_client::{
     DataType, Mapping, Value,
 };
 
-use test_rqlited::{lock, TEST_RQLITED_DB};
+use test_rqlited::{lock, TestRqlited};
 
 #[test]
 fn query_associative_get_test() {
     lock!({
-        TEST_RQLITED_DB.run_test(|c| {
+        TestRqlited::get_or_init().run_test(|c| {
             let path = Path::new("./tests/test_migrations");
             let m = Migration::from_path(path);
             let version = m.migrate_to(&c, Some(&SchemaVersion(7))).unwrap();
@@ -61,7 +61,7 @@ fn query_associative_get_test() {
 #[test]
 fn query_associative_post_test() {
     lock!({
-        TEST_RQLITED_DB.run_test(|c| {
+        TestRqlited::get_or_init().run_test(|c| {
             let path = Path::new("./tests/test_migrations");
             let m = Migration::from_path(path);
             let version = m.migrate_to(&c, Some(&SchemaVersion(7))).unwrap();

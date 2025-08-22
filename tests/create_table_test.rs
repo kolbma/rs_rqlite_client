@@ -6,11 +6,11 @@ use rqlite_client::{
     response::mapping,
     Request, RequestBuilder, Response,
 };
-use test_rqlited::TEST_RQLITED_DB;
+use test_rqlited::TestRqlited;
 
 #[test]
 fn create_table_test_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let r = Request::<Post>::new().run(&c.execute().push_sql_str(
             "CREATE TABLE table_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
         ));
@@ -42,7 +42,7 @@ fn create_table_test_test() {
 
 #[test]
 fn create_table_error_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let r = Request::<Get>::new().run(&c.query().set_sql_str(
             "CREATE TABLE table_error (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
         ));

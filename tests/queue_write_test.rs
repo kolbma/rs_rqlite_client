@@ -4,11 +4,11 @@
 use std::time::Duration;
 
 use rqlite_client::{response::mapping::Mapping, DataType, Error, Response, Value};
-use test_rqlited::TEST_RQLITED_DB;
+use test_rqlited::TestRqlited;
 
 #[test]
 fn queue_write_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let mut q = c
             .execute_queue()
             .push_sql_str("DROP TABLE IF EXISTS temp.queue_write_test")
@@ -66,7 +66,7 @@ fn queue_write_test() {
 
 #[test]
 fn queue_write_wait_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let mut q = c
             .execute_queue()
             .set_wait()
@@ -124,7 +124,7 @@ fn queue_write_wait_test() {
 
 #[test]
 fn queue_write_wait_timeout_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         for _ in 0..20 {
             let mut q = c
                 .execute_queue()

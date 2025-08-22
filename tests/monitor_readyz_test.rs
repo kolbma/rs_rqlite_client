@@ -4,11 +4,11 @@
 use std::time::Duration;
 
 use rqlite_client::monitor::response;
-use test_rqlited::TEST_RQLITED_DB;
+use test_rqlited::TestRqlited;
 
 #[test]
 fn monitor_readyz_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let q = c.monitor().readyz();
 
         let r = q.request_run();
@@ -25,7 +25,7 @@ fn monitor_readyz_test() {
 
 #[test]
 fn monitor_readyz_sync_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let q = c
             .monitor()
             .readyz()

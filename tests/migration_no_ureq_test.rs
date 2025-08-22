@@ -21,7 +21,7 @@ where
 
 #[test]
 fn migration_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|connection| {
+    test_rqlited::TestRqlited::get_or_init().run_test(|connection| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path).set_request_builder(NoUreqRequest {});
         let result = m.migrate(&connection);
@@ -36,7 +36,7 @@ fn migration_test() {
 
 #[test]
 fn migration_to_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|connection| {
+    test_rqlited::TestRqlited::get_or_init().run_test(|connection| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path).set_request_builder(NoUreqRequest {});
         let result = m.migrate_to(&connection, Some(&SchemaVersion(u64::MAX)));
@@ -61,7 +61,7 @@ fn migration_to_test() {
 
 #[test]
 fn rollback_to_test() {
-    test_rqlited::TEST_RQLITED_DB.run_test(|connection| {
+    test_rqlited::TestRqlited::get_or_init().run_test(|connection| {
         let path = Path::new("./tests/test_migrations");
         let m = Migration::from_path(path).set_request_builder(NoUreqRequest {});
 

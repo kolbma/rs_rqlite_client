@@ -6,13 +6,13 @@ use rqlite_client::{
     response::Query,
     DataType, Mapping, Request, RequestBuilder,
 };
-use test_rqlited::TEST_RQLITED_DB;
+use test_rqlited::TestRqlited;
 
 const TEST_TABLE: &str = "query_without_values";
 
 #[test]
 fn query_standard_without_values_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let r = Request::<Post>::new().run(&c.execute().push_sql_str(&format!(
             "CREATE TABLE IF NOT EXISTS {TEST_TABLE} (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)"
         )));
@@ -37,7 +37,7 @@ fn query_standard_without_values_test() {
 
 #[test]
 fn query_associative_without_values_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let r = Request::<Post>::new().run(&c.execute().push_sql_str(&format!(
             "CREATE TABLE IF NOT EXISTS {TEST_TABLE} (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)"
         )));

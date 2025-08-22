@@ -2,11 +2,11 @@
 #![cfg(all(feature = "monitor", feature = "ureq"))]
 
 use rqlite_client::monitor::response;
-use test_rqlited::TEST_RQLITED_DB;
+use test_rqlited::TestRqlited;
 
 #[test]
 fn monitor_status_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let q = c.monitor();
 
         let r = q.request_run();

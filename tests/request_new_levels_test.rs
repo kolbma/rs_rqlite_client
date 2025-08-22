@@ -5,11 +5,11 @@ use rqlite_client::{
     response::{self, mapping},
     Connection, DataType, Mapping,
 };
-use test_rqlited::TEST_RQLITED_DB;
+use test_rqlited::TestRqlited;
 
 #[test]
 fn level_auto_test() {
-    TEST_RQLITED_DB.run_test(|c: Connection| {
+    TestRqlited::get_or_init().run_test(|c: Connection| {
         let r = c.query().set_auto().set_sql_str("SELECT 1").request_run();
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
@@ -36,7 +36,7 @@ fn level_auto_test() {
 
 #[test]
 fn level_linearizable_test() {
-    TEST_RQLITED_DB.run_test(|c: Connection| {
+    TestRqlited::get_or_init().run_test(|c: Connection| {
         let r = c
             .query()
             .set_linearizable()

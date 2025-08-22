@@ -2,11 +2,11 @@
 #![cfg(all(feature = "monitor", feature = "ureq"))]
 
 use rqlite_client::monitor::response;
-use test_rqlited::{TEST_RQLITED_DB, TEST_RQLITED_DB_URL};
+use test_rqlited::{TestRqlited, TEST_RQLITED_DB_URL};
 
 #[test]
 fn monitor_nodes_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let q = c.monitor().nodes();
 
         let r = q.request_run();
@@ -28,7 +28,7 @@ fn monitor_nodes_test() {
 
 #[test]
 fn monitor_nodes_ver2_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let q = c.monitor().nodes().enable_version2();
 
         let r = q.request_run();

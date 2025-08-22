@@ -3,7 +3,7 @@
 
 use std::{sync::OnceLock, time::Duration};
 
-use test_rqlited::{TEST_RQLITED_DB, TEST_RQLITED_DB_URL};
+use test_rqlited::{TestRqlited, TEST_RQLITED_DB_URL};
 
 use rqlite_client::{
     request_type::{Get, Post},
@@ -50,7 +50,7 @@ fn get_test_socks_proxy_connection() -> &'static Connection {
 
 #[test]
 fn nolevel_test() {
-    TEST_RQLITED_DB.run_test(|c: Connection| {
+    TestRqlited::get_or_init().run_test(|c: Connection| {
         let r = Request::from(Get).run(&c.query().set_sql_str("SELECT 1"));
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
@@ -77,7 +77,7 @@ fn nolevel_test() {
 
 #[test]
 fn nolevel_request_run_test() {
-    TEST_RQLITED_DB.run_test(|c: Connection| {
+    TestRqlited::get_or_init().run_test(|c: Connection| {
         let r = c.query().set_sql_str("SELECT 1").request_run();
 
         assert!(r.is_ok(), "response error: {}", r.err().unwrap());
@@ -104,7 +104,7 @@ fn nolevel_request_run_test() {
 
 #[test]
 fn proxy_test() {
-    TEST_RQLITED_DB.run_test(|_c| {
+    TestRqlited::get_or_init().run_test(|_c| {
         let r = Request::<Get>::from(get_test_proxy_connection()).run(
             &get_test_proxy_connection()
                 .query()
@@ -124,7 +124,7 @@ fn proxy_test() {
 
 #[test]
 fn query_post_switch_test() {
-    TEST_RQLITED_DB.run_test(|c: Connection| {
+    TestRqlited::get_or_init().run_test(|c: Connection| {
         let r = c
             .query()
             .set_sql_str_slice(&["SELECT COUNT(*) FROM test4zc99f where val = ?", "test"])
@@ -150,7 +150,7 @@ fn query_post_switch_test() {
 
 #[test]
 fn request_timeout_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let r = Request::<Get>::new().run(
             &c.query()
                 .set_timeout_request(Duration::from_nanos(10))
@@ -169,7 +169,7 @@ fn request_timeout_test() {
 
 #[test]
 fn socks_proxy_test() {
-    TEST_RQLITED_DB.run_test(|_c| {
+    TestRqlited::get_or_init().run_test(|_c| {
         let r = Request::<Get>::from(get_test_socks_proxy_connection()).run(
             &get_test_socks_proxy_connection()
                 .query()
@@ -192,7 +192,7 @@ fn socks_proxy_test() {
 
 #[test]
 fn weak_multi_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let r = Request::<Post>::new().run(
             &c.query()
                 .set_weak()

@@ -6,12 +6,12 @@ use std::path::Path;
 use rqlite_client::migration::{
     Downgrade, Migration, SchemaVersion, Upgrade, M, SCHEMA_VERSION_MAX,
 };
-use test_rqlited::{lock, TEST_RQLITED_DB};
+use test_rqlited::{lock, TestRqlited};
 
 #[test]
 fn migration_test() {
     lock!({
-        TEST_RQLITED_DB.run_test(|c| {
+        TestRqlited::get_or_init().run_test(|c| {
             let path = Path::new("./tests/test_migrations");
             let m = Migration::from_path(path);
             let version = m.migrate(&c).unwrap_or_else(|err| {
@@ -29,7 +29,7 @@ fn migration_test() {
 #[test]
 fn migration_to_test() {
     lock!({
-        TEST_RQLITED_DB.run_test(|c| {
+        TestRqlited::get_or_init().run_test(|c| {
             let path = Path::new("./tests/test_migrations");
             let m = Migration::from_path(path);
             let err = m.migrate_to(&c, Some(&SCHEMA_VERSION_MAX));
@@ -59,7 +59,7 @@ fn migration_to_test() {
 #[test]
 fn rollback_to_test() {
     lock!({
-        TEST_RQLITED_DB.run_test(|c| {
+        TestRqlited::get_or_init().run_test(|c| {
             let path = Path::new("./tests/test_migrations");
             let m = Migration::from_path(path);
 

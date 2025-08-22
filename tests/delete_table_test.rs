@@ -2,11 +2,11 @@
 #![cfg(feature = "ureq")]
 
 use rqlite_client::{request_type::Post, response::mapping, Request, RequestBuilder, Response};
-use test_rqlited::TEST_RQLITED_DB;
+use test_rqlited::TestRqlited;
 
 #[test]
 fn delete_table_test_test() {
-    TEST_RQLITED_DB.run_test(|c| {
+    TestRqlited::get_or_init().run_test(|c| {
         let r = Request::<Post>::new().run(&c.execute().push_sql_str(
             "CREATE TABLE IF NOT EXISTS delete_table_test (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
         ));
